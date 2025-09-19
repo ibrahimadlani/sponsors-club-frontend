@@ -29,6 +29,8 @@ export const AuthProvider = ({ children }) => {
     const pathname = usePathname();
 
     useEffect(() => {
+        if (typeof window === "undefined") return;
+
         const storedToken = localStorage.getItem("accessToken");
 
         if (storedToken) {
@@ -57,13 +59,17 @@ export const AuthProvider = ({ children }) => {
     // Fonction pour rafraîchir le token et mettre à jour l'utilisateur
     const refreshAuth = async () => {
         try {
+            if (typeof window === "undefined") {
+                throw new Error("No refresh token found");
+            }
+
             const refreshToken = localStorage.getItem("refreshToken");
             if (!refreshToken) throw new Error("No refresh token found");
 
-            const data = await refreshAccessToken(refreshToken);
-            localStorage.setItem("accessToken", data.access);
-            setAccessToken(data.access);
-            setUser(jwtDecode(data.access)); // Mettre à jour l'utilisateur
+            const newAccessToken = await refreshAccessToken(refreshToken);
+            localStorage.setItem("accessToken", newAccessToken);
+            setAccessToken(newAccessToken);
+            setUser(jwtDecode(newAccessToken)); // Mettre à jour l'utilisateur
         } catch (error) {
             console.error("Token refresh failed");
             router.replace("/login");

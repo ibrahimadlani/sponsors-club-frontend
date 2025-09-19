@@ -1,10 +1,17 @@
 
-// Prefer env override if provided, fallback to localhost
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0.1:8001";
+// Prefer env override if provided, fallback to documented local API
+const DEFAULT_API_BASE = "http://localhost:8000/api";
+const rawBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE;
+
+// Normalise the base URL so we never end with a trailing slash
+export const API_BASE_URL = rawBaseUrl.replace(/\/$/, "");
+
+const makeUrl = (endpoint) =>
+  `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
 
 // 🔹 Reset Password Request
 export const resetPassword = async (email) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/`, {
+  const res = await fetch(makeUrl("/users/password/reset/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -21,7 +28,7 @@ export const resetPassword = async (email) => {
 
 // 🔹 Confirm Password Reset
 export const confirmPasswordReset = async (token, newPassword) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/confirm/`, {
+  const res = await fetch(makeUrl("/users/password/reset/confirm/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -36,7 +43,7 @@ export const confirmPasswordReset = async (token, newPassword) => {
 
 // 🔹 Register a new user
 export const registerUser = async (userData) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/register/`, {
+  const res = await fetch(makeUrl("/users/register/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -54,7 +61,7 @@ export const registerUser = async (userData) => {
 
 // 🔹 Verify Email
 export const verifyEmail = async (token) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/verify-email/`, {
+  const res = await fetch(makeUrl("/users/verify-email/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
@@ -73,7 +80,7 @@ export const verifyEmail = async (token) => {
 // Helper: attach Authorization header if accessToken is available (for user-scoped fields like is_followed)
 const withAuthIfAvailable = () => {
   try {
-    if (typeof window === 'undefined') return {};
+    if (typeof window === "undefined") return {};
     const token = localStorage.getItem("accessToken");
     return token ? { Authorization: `Bearer ${token}` } : {};
   } catch {
@@ -82,7 +89,7 @@ const withAuthIfAvailable = () => {
 };
 
 export const getAthletes = async () => {
-  const res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+  const res = await fetch(makeUrl("/athletes/"), {
     cache: "no-store",
     headers: { ...withAuthIfAvailable() },
   });
@@ -96,7 +103,7 @@ export const getAthleteBySlug = async (slugOrId) => {
   // Try fetch by UUID first, else fallback to list and match by profile_url
   const isUuid = /[0-9a-fA-F-]{36}/.test(slugOrId);
   if (isUuid) {
-    const res = await fetch(`${API_BASE_URL}/api/athletes/${slugOrId}/`, {
+    const res = await fetch(makeUrl(`/athletes/${slugOrId}/`), {
       cache: "no-store",
       headers: { ...withAuthIfAvailable() },
     });
@@ -106,20 +113,32 @@ export const getAthleteBySlug = async (slugOrId) => {
   return list.find((a) => a.profile_url === `/athletes/${slugOrId}` || a.id === slugOrId) || null;
 };
 
-export const getAthletesPage = async (limit = 12, offset = 0) => {
-  const url = `${API_BASE_URL}/api/athletes/?limit=${limit}&offset=${offset}`;
+export const getAthletesPage = async (pageSize = 12, page = 1) => {
+  const params = new URLSearchParams({
+    page: String(page),
+    page_size: String(pageSize),
+  });
+  const url = `${makeUrl("/athletes/")}?${params.toString()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("Impossible de charger les athlètes");
   const data = await res.json();
   if (Array.isArray(data)) {
     // non-paginated fallback
-    return { results: data.slice(offset, offset + limit), next: data.length > offset + limit ? url : null };
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    return {
+      results: data.slice(start, end),
+      next: end < data.length ? `${makeUrl("/athletes/")}?${new URLSearchParams({
+        page: String(page + 1),
+        page_size: String(pageSize),
+      }).toString()}` : null,
+    };
   }
   return { results: data.results || [], next: data.next || null };
 };
 
 export const login = async (email, password) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+  const res = await fetch(makeUrl("/users/login/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -142,17 +161,23 @@ export const login = async (email, password) => {
   }
 
   // Sauvegarde des tokens dans le localStorage
-  localStorage.setItem("accessToken", data.access);
-  localStorage.setItem("refreshToken", data.refresh);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", data.access);
+    localStorage.setItem("refreshToken", data.refresh);
+  }
   return data;
 };
 
 // 🔹 Refresh Access Token
-export const refreshAccessToken = async () => {
-  const refreshToken = localStorage.getItem("refreshToken");
+export const refreshAccessToken = async (refreshTokenParam) => {
+  const refreshToken =
+    refreshTokenParam ||
+    (typeof window !== "undefined"
+      ? localStorage.getItem("refreshToken")
+      : null);
   if (!refreshToken) throw new Error("No refresh token available");
 
-  const res = await fetch(`${API_BASE_URL}/api/auth/refresh/`, {
+  const res = await fetch(makeUrl("/users/refresh/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -165,33 +190,37 @@ export const refreshAccessToken = async () => {
   }
 
   const data = await res.json();
-  localStorage.setItem("accessToken", data.access);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", data.access);
+  }
   return data.access;
 };
 
 // 🔹 Logout User
 export const logout = () => {
+  if (typeof window === "undefined") return;
   localStorage.removeItem("accessToken");
   localStorage.removeItem("refreshToken");
 
   // Redirect to login page
   window.location.href = "/login?origin=logout";
-  
 };
 
 // 🔹 Fetch User Profile
 export const fetchUserProfile = async () => {
-  let token = localStorage.getItem("accessToken");
+  const storedToken =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
+  let token = storedToken;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/auth/me/`, {
+  let res = await fetch(makeUrl("/users/me/"), {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/auth/me/`, {
+    res = await fetch(makeUrl("/users/me/"), {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -203,38 +232,33 @@ export const fetchUserProfile = async () => {
 
 // 🔹 Update User Profile
 // 🔹 Mettre à jour le profil utilisateur avec PATCH
-export const updateProfile = async (id, data) => {
-  let token = localStorage.getItem("accessToken");
-  console.log(data);
+export const updateProfile = async (_id, data) => {
+  let token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) throw new Error("Utilisateur non authentifié");
 
-  // 🔥 Récupérer l'ID utilisateur via fetchUserProfile()
-  const user = await fetchUserProfile();
-  const userId = user.id; // Assurez-vous que l'ID est bien récupéré depuis le profil utilisateur
-
-  // ✅ Vérification de la structure du payload avant l'envoi
   if (typeof data !== "object") {
     throw new Error("Les données de mise à jour doivent être un objet JSON valide");
   }
 
-  let res = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
-    method: "PATCH", // ✅ Utilisation de PATCH pour ne modifier que certains champs
+  let res = await fetch(makeUrl("/users/me/"), {
+    method: "PATCH",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(data), // ✅ S'assurer que data est bien stringifié
+    body: JSON.stringify(data),
   });
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
+    res = await fetch(makeUrl("/users/me/"), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify(data), // ✅ Même correction ici
+      body: JSON.stringify(data),
     });
   }
 
@@ -249,7 +273,7 @@ export const updateProfile = async (id, data) => {
 
 // 🔹 Request Password Reset
 export const requestPasswordReset = async (email) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/password/reset/`, {
+  const res = await fetch(makeUrl("/users/password/reset/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -264,10 +288,11 @@ export const requestPasswordReset = async (email) => {
 
 // 🔹 Change Password
 export const changePassword = async (oldPassword, newPassword, confirmNewPassword) => {
-  let token = localStorage.getItem("accessToken");
+  let token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/auth/change-password/`, {
+  let res = await fetch(makeUrl("/users/password/change/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -282,7 +307,7 @@ export const changePassword = async (oldPassword, newPassword, confirmNewPasswor
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/auth/change-password/`, {
+    res = await fetch(makeUrl("/users/password/change/"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -302,11 +327,12 @@ export const changePassword = async (oldPassword, newPassword, confirmNewPasswor
 
 // 🔹 Delete account (Right to erasure)
 export const deleteAccount = async () => {
-  let token = localStorage.getItem("accessToken");
+  let token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/privacy/erase/`, {
-    method: "POST",
+  let res = await fetch(makeUrl("/users/me/"), {
+    method: "DELETE",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
@@ -315,8 +341,8 @@ export const deleteAccount = async () => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/privacy/erase/`, {
-      method: "POST",
+    res = await fetch(makeUrl("/users/me/"), {
+      method: "DELETE",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
@@ -326,9 +352,16 @@ export const deleteAccount = async () => {
 
   if (!res.ok) {
     let msg = "Failed to delete account";
-    try { const data = await res.json(); msg = data?.message || msg; } catch {}
+    try {
+      const data = await res.json();
+      msg = data?.message || msg;
+    } catch {}
     throw new Error(msg);
   }
 
-  return res.json();
+  try {
+    return await res.json();
+  } catch {
+    return null;
+  }
 };

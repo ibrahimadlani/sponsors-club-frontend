@@ -1,12 +1,16 @@
 import { API_BASE_URL, refreshAccessToken as refreshAccessTokenImported } from "./api";
 
+const makeUrl = (endpoint) =>
+  `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+
 /**
  * Helper function to perform fetch avec authentification.
  * Ajoute le header Authorization avec le token actuel.
  * Si la réponse est 401, tente de rafraîchir le token et recommence la requête.
  */
 async function fetchWithAuth(url, options = {}) {
-  let token = localStorage.getItem("accessToken");
+  let token =
+    typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) {
     throw new Error("User not authenticated");
   }
@@ -32,7 +36,7 @@ async function fetchWithAuth(url, options = {}) {
 
 // 🔹 Login : envoie email et password, récupère et sauvegarde les tokens.
 export async function login(email, password) {
-  const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+  const res = await fetch(makeUrl("/users/login/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
@@ -58,8 +62,10 @@ export async function login(email, password) {
     throw error;
   }
 
-  localStorage.setItem("accessToken", data.access);
-  localStorage.setItem("refreshToken", data.refresh);
+  if (typeof window !== "undefined") {
+    localStorage.setItem("accessToken", data.access);
+    localStorage.setItem("refreshToken", data.refresh);
+  }
   return data;
 }
 
@@ -69,14 +75,16 @@ export const refreshAccessToken = refreshAccessTokenImported;
 
 // 🔹 Logout : supprime les tokens et redirige vers la page de login.
 export function logout() {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  window.location.href = "/login";
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    window.location.href = "/login";
+  }
 }
 
 // 🔹 Register User : enregistre un nouvel utilisateur.
 export async function registerUser(userData) {
-  const res = await fetch(`${API_BASE_URL}/api/auth/register/`, {
+  const res = await fetch(makeUrl("/users/register/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(userData),
@@ -91,7 +99,7 @@ export async function registerUser(userData) {
 
 // 🔹 Fetch User Profile : récupère les informations de l'utilisateur connecté.
 export async function fetchUserProfile() {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/auth/me/`, {
+  const res = await fetchWithAuth(makeUrl("/users/me/"), {
     method: "GET",
   });
 
@@ -105,8 +113,8 @@ export async function updatePreferences({ language, currency, timezone }) {
   if (language !== undefined) body.language = language;
   if (currency !== undefined) body.currency = currency;
   if (timezone !== undefined) body.timezone = timezone;
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/auth/preferences/`, {
-    method: "POST",
+  const res = await fetchWithAuth(makeUrl("/users/me/"), {
+    method: "PATCH",
     body: JSON.stringify(body),
   });
   if (!res.ok) {
@@ -120,7 +128,7 @@ export async function updatePreferences({ language, currency, timezone }) {
 
 // 🔹 Reset Password Request : envoie un email pour réinitialiser le mot de passe.
 export async function resetPassword(email) {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/`, {
+  const res = await fetch(makeUrl("/users/password/reset/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -134,7 +142,7 @@ export async function resetPassword(email) {
 
 // 🔹 Confirm Password Reset : confirme la réinitialisation du mot de passe avec un token.
 export async function confirmPasswordReset(token, newPassword) {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/confirm/`, {
+  const res = await fetch(makeUrl("/users/password/reset/confirm/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token, new_password: newPassword }),
@@ -146,7 +154,7 @@ export async function confirmPasswordReset(token, newPassword) {
 
 // 🔹 Change Password : modifie le mot de passe de l'utilisateur connecté.
 export async function changePassword(oldPassword, newPassword) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/auth/password/change/`, {
+  const res = await fetchWithAuth(makeUrl("/users/password/change/"), {
     method: "POST",
     body: JSON.stringify({
       old_password: oldPassword,
@@ -164,7 +172,7 @@ export async function changePassword(oldPassword, newPassword) {
 
 // 🔹 Get Users : récupère la liste de tous les utilisateurs.
 export async function getUsers() {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/users/`, {
+  const res = await fetchWithAuth(makeUrl("/users/"), {
     method: "GET",
   });
   if (!res.ok) throw new Error("Failed to fetch users");
@@ -173,7 +181,7 @@ export async function getUsers() {
 
 // 🔹 Get User By ID : récupère les informations d'un utilisateur à partir de son ID.
 export async function getUserById(userId) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/users/${userId}/`, {
+  const res = await fetchWithAuth(makeUrl(`/users/${userId}/`), {
     method: "GET",
   });
   if (!res.ok) throw new Error(`Failed to fetch user ${userId}`);
@@ -182,7 +190,7 @@ export async function getUserById(userId) {
 
 // 🔹 Update User Profile : met à jour le profil utilisateur via un PUT.
 export async function updateUserProfile(userId, data) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/users/${userId}/`, {
+  const res = await fetchWithAuth(makeUrl(`/users/${userId}/`), {
     method: "PUT",
     body: JSON.stringify(data),
   });
@@ -192,7 +200,7 @@ export async function updateUserProfile(userId, data) {
 
 // 🔹 Delete User : supprime un utilisateur à partir de son ID.
 export async function deleteUser(userId) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/users/${userId}/`, {
+  const res = await fetchWithAuth(makeUrl(`/users/${userId}/`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error(`Failed to delete user ${userId}`);
@@ -202,22 +210,21 @@ export async function deleteUser(userId) {
 // ---------- Follows (athletes) ----------
 
 export async function listFollows() {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/follows/`, { method: "GET" });
+  const res = await fetchWithAuth(makeUrl("/me/follows/"), { method: "GET" });
   if (!res.ok) throw new Error("Failed to list follows");
   return res.json();
 }
 
 export async function followAthlete(athleteId) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/follows/`, {
+  const res = await fetchWithAuth(makeUrl(`/athletes/${athleteId}/follow/`), {
     method: "POST",
-    body: JSON.stringify({ athlete: athleteId }),
   });
   if (!res.ok) throw new Error("Failed to follow athlete");
-  return res.json();
+  return res.json().catch(() => ({}));
 }
 
-export async function unfollow(followId) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/follows/${followId}/`, {
+export async function unfollow(athleteId) {
+  const res = await fetchWithAuth(makeUrl(`/athletes/${athleteId}/follow/`), {
     method: "DELETE",
   });
   if (!res.ok) throw new Error("Failed to unfollow athlete");
@@ -226,19 +233,13 @@ export async function unfollow(followId) {
 
 // 🔹 Followed athletes (hydrated Athlete objects)
 export async function getFollowedAthletes() {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/followed/athletes/`, { method: "GET" });
-  if (!res.ok) throw new Error("Failed to fetch followed athletes");
-  const data = await res.json();
-  return Array.isArray(data) ? data : (data.results || []);
+  const data = await listFollows();
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.results)) return data.results;
+  return [];
 }
 
 // 🔹 Unfollow by athlete UUID (no need to know follow id)
 export async function unfollowByAthlete(athleteId) {
-  const res = await fetchWithAuth(`${API_BASE_URL}/api/follows/by-athlete/${athleteId}/`, {
-    method: "DELETE",
-  });
-  if (!res.ok && res.status !== 200 && res.status !== 204) {
-    throw new Error("Failed to unfollow by athlete");
-  }
-  return true;
+  return unfollow(athleteId);
 }
