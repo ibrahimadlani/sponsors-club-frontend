@@ -1,17 +1,30 @@
 
-// Prefer env override if provided, fallback to documented local API
-const DEFAULT_API_BASE = "http://localhost:8000/api";
+// Prefer env override if provided, fallback to documented local API host
+const DEFAULT_API_BASE = "http://localhost:8000";
 const rawBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || DEFAULT_API_BASE;
 
 // Normalise the base URL so we never end with a trailing slash
 export const API_BASE_URL = rawBaseUrl.replace(/\/$/, "");
 
-const makeUrl = (endpoint) =>
-  `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+const API_PATH_PREFIX = "/api";
+
+const normaliseEndpoint = (endpoint) =>
+  endpoint.startsWith("/") ? endpoint : `/${endpoint}`;
+
+export const makeApiUrl = (endpoint) => {
+  const normalisedEndpoint = normaliseEndpoint(endpoint);
+  const needsPrefix =
+    normalisedEndpoint !== API_PATH_PREFIX &&
+    !normalisedEndpoint.startsWith(`${API_PATH_PREFIX}/`);
+  const path = needsPrefix
+    ? `${API_PATH_PREFIX}${normalisedEndpoint}`
+    : normalisedEndpoint;
+  return `${API_BASE_URL}${path}`;
+};
 
 // 🔹 Reset Password Request
 export const resetPassword = async (email) => {
-  const res = await fetch(makeUrl("/users/password/reset/"), {
+  const res = await fetch(makeApiUrl("/users/password/reset/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -28,7 +41,7 @@ export const resetPassword = async (email) => {
 
 // 🔹 Confirm Password Reset
 export const confirmPasswordReset = async (token, newPassword) => {
-  const res = await fetch(makeUrl("/users/password/reset/confirm/"), {
+  const res = await fetch(makeApiUrl("/users/password/reset/confirm/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -43,7 +56,7 @@ export const confirmPasswordReset = async (token, newPassword) => {
 
 // 🔹 Register a new user
 export const registerUser = async (userData) => {
-  const res = await fetch(makeUrl("/users/register/"), {
+  const res = await fetch(makeApiUrl("/users/register/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -61,7 +74,7 @@ export const registerUser = async (userData) => {
 
 // 🔹 Verify Email
 export const verifyEmail = async (token) => {
-  const res = await fetch(makeUrl("/users/verify-email/"), {
+  const res = await fetch(makeApiUrl("/users/verify-email/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
@@ -89,7 +102,7 @@ const withAuthIfAvailable = () => {
 };
 
 export const getAthletes = async () => {
-  const res = await fetch(makeUrl("/athletes/"), {
+  const res = await fetch(makeApiUrl("/athletes/"), {
     cache: "no-store",
     headers: { ...withAuthIfAvailable() },
   });
@@ -103,7 +116,7 @@ export const getAthleteBySlug = async (slugOrId) => {
   // Try fetch by UUID first, else fallback to list and match by profile_url
   const isUuid = /[0-9a-fA-F-]{36}/.test(slugOrId);
   if (isUuid) {
-    const res = await fetch(makeUrl(`/athletes/${slugOrId}/`), {
+    const res = await fetch(makeApiUrl(`/athletes/${slugOrId}/`), {
       cache: "no-store",
       headers: { ...withAuthIfAvailable() },
     });
@@ -118,7 +131,7 @@ export const getAthletesPage = async (pageSize = 12, page = 1) => {
     page: String(page),
     page_size: String(pageSize),
   });
-  const url = `${makeUrl("/athletes/")}?${params.toString()}`;
+  const url = `${makeApiUrl("/athletes/")}?${params.toString()}`;
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error("Impossible de charger les athlètes");
   const data = await res.json();
@@ -128,7 +141,7 @@ export const getAthletesPage = async (pageSize = 12, page = 1) => {
     const end = start + pageSize;
     return {
       results: data.slice(start, end),
-      next: end < data.length ? `${makeUrl("/athletes/")}?${new URLSearchParams({
+      next: end < data.length ? `${makeApiUrl("/athletes/")}?${new URLSearchParams({
         page: String(page + 1),
         page_size: String(pageSize),
       }).toString()}` : null,
@@ -138,7 +151,7 @@ export const getAthletesPage = async (pageSize = 12, page = 1) => {
 };
 
 export const login = async (email, password) => {
-  const res = await fetch(makeUrl("/users/login/"), {
+  const res = await fetch(makeApiUrl("/users/login/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -177,7 +190,7 @@ export const refreshAccessToken = async (refreshTokenParam) => {
       : null);
   if (!refreshToken) throw new Error("No refresh token available");
 
-  const res = await fetch(makeUrl("/users/refresh/"), {
+  const res = await fetch(makeApiUrl("/users/refresh/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -213,14 +226,14 @@ export const fetchUserProfile = async () => {
   let token = storedToken;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(makeUrl("/users/me/"), {
+  let res = await fetch(makeApiUrl("/users/me/"), {
     method: "GET",
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(makeUrl("/users/me/"), {
+    res = await fetch(makeApiUrl("/users/me/"), {
       method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -241,7 +254,7 @@ export const updateProfile = async (_id, data) => {
     throw new Error("Les données de mise à jour doivent être un objet JSON valide");
   }
 
-  let res = await fetch(makeUrl("/users/me/"), {
+  let res = await fetch(makeApiUrl("/users/me/"), {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -252,7 +265,7 @@ export const updateProfile = async (_id, data) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(makeUrl("/users/me/"), {
+    res = await fetch(makeApiUrl("/users/me/"), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -273,7 +286,7 @@ export const updateProfile = async (_id, data) => {
 
 // 🔹 Request Password Reset
 export const requestPasswordReset = async (email) => {
-  const res = await fetch(makeUrl("/users/password/reset/"), {
+  const res = await fetch(makeApiUrl("/users/password/reset/"), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -292,7 +305,7 @@ export const changePassword = async (oldPassword, newPassword, confirmNewPasswor
     typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(makeUrl("/users/password/change/"), {
+  let res = await fetch(makeApiUrl("/users/password/change/"), {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -307,7 +320,7 @@ export const changePassword = async (oldPassword, newPassword, confirmNewPasswor
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(makeUrl("/users/password/change/"), {
+    res = await fetch(makeApiUrl("/users/password/change/"), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -331,7 +344,7 @@ export const deleteAccount = async () => {
     typeof window !== "undefined" ? localStorage.getItem("accessToken") : null;
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(makeUrl("/users/me/"), {
+  let res = await fetch(makeApiUrl("/users/me/"), {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -341,7 +354,7 @@ export const deleteAccount = async () => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(makeUrl("/users/me/"), {
+    res = await fetch(makeApiUrl("/users/me/"), {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",

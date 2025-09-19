@@ -1,7 +1,9 @@
-import { API_BASE_URL, refreshAccessToken as refreshAccessTokenImported } from "./api";
+import {
+  makeApiUrl,
+  refreshAccessToken as refreshAccessTokenImported,
+} from "./api";
 
-const makeUrl = (endpoint) =>
-  `${API_BASE_URL}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+const makeUrl = makeApiUrl;
 
 /**
  * Helper function to perform fetch avec authentification.
