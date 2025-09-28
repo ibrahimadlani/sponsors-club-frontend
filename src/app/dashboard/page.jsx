@@ -21,6 +21,71 @@ export default function AgentDashboardPage() {
   const router = useRouter();
   const [isVisible, setIsVisible] = useState(false);
 
+  const managementCards = [
+    {
+      title: "Gestion d'athlètes",
+      description: "Créez et gérez les profils de vos talents",
+      icon: Users,
+      iconStyles: {
+        container: "bg-blue-100",
+        icon: "text-blue-600"
+      },
+      stats: [
+        { label: "Athlètes actifs", value: "0" },
+        { label: "Profils complétés", value: "0%" }
+      ],
+      action: {
+        label: "Créer votre premier athlète",
+        href: "/onboarding/athlete",
+        icon: ArrowRight
+      }
+    },
+    {
+      title: "Opportunités",
+      description: "Trouvez des partenariats pour vos athlètes",
+      icon: Building2,
+      iconStyles: {
+        container: "bg-green-100",
+        icon: "text-green-600"
+      },
+      stats: [
+        { label: "Contrats actifs", value: "0" },
+        { label: "Revenus générés", value: "0 €" }
+      ],
+      action: {
+        label: "Rechercher des sponsors",
+        variant: "outline",
+        disabled: true,
+        note: "(Bientôt disponible)"
+      }
+    }
+  ];
+
+  const onboardingSteps = [
+    {
+      number: 1,
+      title: "Créez votre premier profil d'athlète",
+      description: "Commencez par ajouter les informations de base de votre athlète principal",
+      action: {
+        label: "Commencer",
+        href: "/onboarding/athlete",
+        icon: ArrowRight
+      }
+    },
+    {
+      number: 2,
+      title: "Complétez les profils",
+      description: "Ajoutez des photos, statistiques et informations détaillées",
+      status: "upcoming"
+    },
+    {
+      number: 3,
+      title: "Recherchez des partenaires",
+      description: "Utilisez notre plateforme pour trouver des opportunités de sponsoring",
+      status: "upcoming"
+    }
+  ];
+
   useEffect(() => {
     setIsVisible(true);
     
@@ -74,75 +139,57 @@ export default function AgentDashboardPage() {
           </motion.div>
 
           <div className="grid md:grid-cols-2 gap-6 mb-12">
-            <motion.div variants={fadeInUp}>
-              <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-lg bg-blue-100">
-                      <Users className="h-6 w-6 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Gestion d&apos;athlètes</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Créez et gérez les profils de vos talents
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Athlètes actifs</span>
-                      <span className="font-medium">0</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Profils complétés</span>
-                      <span className="font-medium">0%</span>
-                    </div>
-                  </div>
-                  <Button className="w-full" asChild>
-                    <Link href="/onboarding/athlete">
-                      Créer votre premier athlète
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Link>
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+            {managementCards.map((card) => {
+              const Icon = card.icon;
+              const ActionIcon = card.action?.icon;
 
-            <motion.div variants={fadeInUp}>
-              <Card className="h-full hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <div className="flex items-center gap-3">
-                    <div className="p-3 rounded-lg bg-green-100">
-                      <Building2 className="h-6 w-6 text-green-600" />
-                    </div>
-                    <div>
-                      <CardTitle>Opportunités</CardTitle>
-                      <p className="text-sm text-muted-foreground">
-                        Trouvez des partenariats pour vos athlètes
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Contrats actifs</span>
-                      <span className="font-medium">0</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span>Revenus générés</span>
-                      <span className="font-medium">0 €</span>
-                    </div>
-                  </div>
-                  <Button variant="outline" className="w-full" disabled>
-                    Rechercher des sponsors
-                    <span className="ml-2 text-xs">(Bientôt disponible)</span>
-                  </Button>
-                </CardContent>
-              </Card>
-            </motion.div>
+              return (
+                <motion.div key={card.title} variants={fadeInUp}>
+                  <Card className="h-full hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-lg ${card.iconStyles.container}`}>
+                          <Icon className={`h-6 w-6 ${card.iconStyles.icon}`} />
+                        </div>
+                        <div>
+                          <CardTitle>{card.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{card.description}</p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {card.stats.map((stat) => (
+                          <div key={stat.label} className="flex justify-between text-sm">
+                            <span>{stat.label}</span>
+                            <span className="font-medium">{stat.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {card.action.href ? (
+                        <Button className="w-full" asChild>
+                          <Link href={card.action.href}>
+                            {card.action.label}
+                            {ActionIcon && <ActionIcon className="ml-2 h-4 w-4" />}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          variant={card.action.variant}
+                          disabled={card.action.disabled}
+                        >
+                          {card.action.label}
+                          {card.action.note && (
+                            <span className="ml-2 text-xs">{card.action.note}</span>
+                          )}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
           </div>
 
           <motion.div variants={fadeInUp}>
@@ -155,47 +202,48 @@ export default function AgentDashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="flex items-start gap-4 p-4 border rounded-lg">
-                    <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-bold">
-                      1
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium mb-1">Créez votre premier profil d&apos;athlète</h4>
-                      <p className="text-sm text-muted-foreground mb-3">
-                        Commencez par ajouter les informations de base de votre athlète principal
-                      </p>
-                      <Button size="sm" asChild>
-                        <Link href="/onboarding/athlete">
-                          Commencer
-                          <ArrowRight className="ml-2 h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </div>
+                  {onboardingSteps.map((step) => {
+                    const isUpcoming = step.status === "upcoming";
+                    const StepActionIcon = step.action?.icon;
 
-                  <div className="flex items-start gap-4 p-4 border rounded-lg opacity-50">
-                    <div className="flex-shrink-0 w-8 h-8 bg-muted text-muted-foreground rounded-full flex items-center justify-center text-sm font-bold">
-                      2
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium mb-1">Complétez les profils</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Ajoutez des photos, statistiques et informations détaillées
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-4 p-4 border rounded-lg opacity-50">
-                    <div className="flex-shrink-0 w-8 h-8 bg-muted text-muted-foreground rounded-full flex items-center justify-center text-sm font-bold">
-                      3
-                    </div>
-                    <div className="flex-1">
-                      <h4 className="font-medium mb-1">Recherchez des partenaires</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Utilisez notre plateforme pour trouver des opportunités de sponsoring
-                      </p>
-                    </div>
-                  </div>
+                    return (
+                      <div
+                        key={step.number}
+                        className={`flex items-start gap-4 p-4 border rounded-lg ${
+                          isUpcoming ? "opacity-50" : ""
+                        }`}
+                      >
+                        <div
+                          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            isUpcoming
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {step.number}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium mb-1">{step.title}</h4>
+                          <p className={`text-sm text-muted-foreground ${
+                            step.action ? "mb-3" : ""
+                          }`}
+                          >
+                            {step.description}
+                          </p>
+                          {step.action && (
+                            <Button size="sm" asChild>
+                              <Link href={step.action.href}>
+                                {step.action.label}
+                                {StepActionIcon && (
+                                  <StepActionIcon className="ml-2 h-3 w-3" />
+                                )}
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
