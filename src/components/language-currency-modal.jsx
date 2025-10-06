@@ -20,6 +20,15 @@ const currencies = [
   { code: "USD", name: "US Dollar", symbol: "$", flag: "🇺🇸" },
 ];
 
+/**
+ * LanguageCurrencyModal lets a signed-in user configure language and currency preferences.
+ * Preferences are persisted via the user endpoints and immediately reflected in the UI.
+ *
+ * @param {object} props - Component properties.
+ * @param {boolean} props.open - Controls the visibility of the modal dialog.
+ * @param {(open: boolean) => void} props.onOpenChange - Callback executed when the modal visibility toggles.
+ * @returns {JSX.Element} A modal with tabs to select language and currency.
+ */
 export function LanguageCurrencyModal({ open, onOpenChange }) {
   const { user } = useCurrentUser();
   const [selectedLanguage, setSelectedLanguage] = useState("fr");
@@ -81,7 +90,7 @@ export function LanguageCurrencyModal({ open, onOpenChange }) {
       // Delay measurement to ensure content is rendered
       setTimeout(measureHeight, 10);
     }
-  }, [activeTab, open, user]);
+  }, [activeTab, open, selectedCurrency, selectedLanguage, user]);
 
   const handleSave = async () => {
     try {

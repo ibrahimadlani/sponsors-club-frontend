@@ -5,7 +5,6 @@
 // follower growth, trophies, photos, etc.).
 
 import { useMemo, useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -27,6 +26,7 @@ import {
   User,
 } from "lucide-react";
 
+import ResponsiveImage from "@/components/responsive-image";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import PageHeader from "@/components/page-header";
 import { Button } from "@/components/ui/button";
@@ -150,10 +150,13 @@ export default function FollowedFeedPage() {
                           <span aria-hidden="true" className="absolute inset-0" />
                           <div className="relative">
                             {images?.[0] ? (
-                              <img
-                                alt=""
+                              <ResponsiveImage
+                                alt={`${a.name} avatar`}
                                 src={images[0]}
-                                className="size-20 rounded-full bg-gray-300 outline -outline-offset-1 outline-black/5 dark:bg-gray-700 dark:outline-white/10"
+                                fill
+                                className="size-20"
+                                imageClassName="rounded-full bg-gray-300 outline -outline-offset-1 outline-black/5 dark:bg-gray-700 dark:outline-white/10"
+                                sizes="80px"
                               />
                             ) : (
                               <div className="size-20 rounded-full bg-muted" />
@@ -259,12 +262,13 @@ function FeedCard({ item }) {
   return (
     <article className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow border border-transparent">
       <header className="flex items-start gap-3 mb-3">
-        <Image
+        <ResponsiveImage
           src={item.athlete.avatar}
           alt={item.athlete.name}
-          width={40}
-          height={40}
-          className="rounded-full object-cover"
+          fill
+          className="size-10"
+          imageClassName="rounded-full object-cover"
+          sizes="40px"
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -334,12 +338,20 @@ function PostBody({ item }) {
       {item.images?.length ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
           {item.images.map((src, i) => (
-            <Image key={i} src={src} alt="post" width={300} height={200} className="w-full h-32 object-cover rounded-lg" />
+            <ResponsiveImage
+              key={i}
+              src={src}
+              alt="post"
+              fill
+              className="h-32 w-full"
+              imageClassName="object-cover rounded-lg"
+              sizes="(min-width: 768px) 33vw, 100vw"
+            />
           ))}
         </div>
       ) : null}
       <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
-        <button className="flex items-center gap-1 hover:text-foreground"><Heart className="w-4 h-4" /> J'aime</button>
+        <button className="flex items-center gap-1 hover:text-foreground"><Heart className="w-4 h-4" /> J&apos;aime</button>
         <button className="flex items-center gap-1 hover:text-foreground"><MessageSquare className="w-4 h-4" /> Commenter</button>
       </div>
     </div>
@@ -388,7 +400,15 @@ function PhotoBody({ item }) {
       {item.caption && <p className="mb-3">{item.caption}</p>}
       <div className="grid grid-cols-3 gap-2">
         {item.images?.map((src, i) => (
-          <Image key={i} src={src} alt="photo" width={300} height={200} className="w-full h-28 object-cover rounded-lg" />
+          <ResponsiveImage
+            key={i}
+            src={src}
+            alt="photo"
+            fill
+            className="h-28 w-full"
+            imageClassName="object-cover rounded-lg"
+            sizes="(min-width: 768px) 33vw, 100vw"
+          />
         ))}
       </div>
     </div>
