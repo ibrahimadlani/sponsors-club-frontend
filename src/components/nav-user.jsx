@@ -17,6 +17,14 @@ import {
   AlignJustify,
   ClipboardPen,
   Globe,
+  Bell,
+  MessagesSquare,
+  Mail,
+  BicepsFlexed,
+  HeartIcon,
+  ChartNoAxesCombined,
+  LayoutDashboard,
+  CreditCard,
 } from "lucide-react";
 
 import { useRouter } from "next/navigation"; // Next.js router for redirection
@@ -123,11 +131,6 @@ export function NavUser({ user: userProp = null }) {
       ? "Collaborateur"
       : user?.account_type || null;
   const emailStatusLabel = user?.email_verified ? "Email vérifié" : null;
-  const secondaryInfo = [accountTypeLabel, emailStatusLabel].filter(Boolean).join(" · ");
-  const formattedPhone = user?.phone_number ? `${user?.phone_country_code ?? ""} ${user.phone_number}`.trim() : null;
-  const formattedBirthDate = formatDate(user?.date_of_birth, { dateStyle: "medium" });
-  const formattedCreatedAt = formatDate(user?.created_at, { dateStyle: "medium" });
-  const formattedUpdatedAt = formatDate(user?.updated_at, { dateStyle: "medium", timeStyle: "short" });
   const isAuthenticated = Boolean(user);
   const isLoadingProfile = loadingProfile;
 
@@ -146,29 +149,70 @@ export function NavUser({ user: userProp = null }) {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
+  // Schéma des menus par rôle
+  const menuSchemas = {
+    AGENT: [
+      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+      { label: 'Profile', href: '/athletes', icon: User },
+      { label: 'Athlètes', href: '/athletes', icon: Heart },
+      { label: 'Collaborations', href: null, icon: Handshake },
+      { label: 'Profile', href: null, icon: User },
+    ],
+    COLLABORATOR: [
+      { label: 'Athlètes', href: '/athletes', icon: BicepsFlexed },
+      { label: 'Suivis', href: '/follows', icon: HeartIcon },
+      { label: 'Collabs', href: '/collaborations', icon: Handshake },
+      { label: 'Analytics', href: '/analytics', icon: ChartNoAxesCombined },
+    ],
+    ADMIN: [
+      { label: 'Dashboard Admin', href: '/admin/dashboard', icon: Sparkles },
+      { label: 'Explorer', href: '/explore', icon: Search },
+      { label: 'Profile', href: null, icon: User },
+    ],
+  };
+
+  // Génère le menu à partir du schéma
+  const RoleMenu = () => {
+    const type = user?.account_type || 'AGENT';
+    const items = menuSchemas[type] || menuSchemas['AGENT'];
+    return (
+      <DropdownMenuGroup className="hidden md:block">
+        {items.map((item, idx) =>
+          item.href ? (
+            <Link href={item.href} passHref className="font-semibold" key={item.label}>
+              <DropdownMenuItem>
+                <item.icon className="mr-2 h-4 w-4" />
+                {item.label}
+              </DropdownMenuItem>
+            </Link>
+          ) : (
+            <DropdownMenuItem className="font-semibold" key={item.label}>
+              <item.icon className="mr-2 h-4 w-4" />
+              {item.label}
+            </DropdownMenuItem>
+          )
+        )}
+      </DropdownMenuGroup>
+    );
+  };
+
   return (
     <SidebarMenu className="flex justify-end flex-row items-center gap-3 d-none">
       {/* Call to Action link */}
-      
-        <a
-          href="/sponsor"
-          className="ml-3 text-sm hover:no-underline transition-colors"
-          style={{ alignSelf: 'center' }}
-        >
-          <div className="rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10  px-3 lg:flex justify-center items-center font-medium hidden">
-            Devenir un <span className="font-semibold text-pink-600 ms-1">Sponsor</span>
-          </div>
+
+      <Link href="/notifications" passHref legacyBehavior>
+        <a className="relative rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10 w-10 hidden lg:flex justify-center items-center cursor-pointer">
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-pink-500 text-white text-[11px] font-bold z-10 shadow">5</span>
+          <Bell className="h-4 w-4" />
         </a>
-      
-      
-        <div 
-          className="rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10 w-10 hidden lg:flex justify-center items-center cursor-pointer"
-          onClick={() => setIsLanguageCurrencyModalOpen(true)}
-        >
-          <Globe className="h-4 w-4" />
-        </div>
-      
-      
+      </Link>
+      <Link href="/messages" passHref legacyBehavior>
+        <a className="relative rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10 w-10 hidden lg:flex justify-center items-center cursor-pointer">
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-pink-500 text-white text-[11px] font-bold z-10 shadow">3</span>
+          <Mail className="h-4 w-4" />
+        </a>
+      </Link>
+
       <SidebarMenuItem className="relative">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -183,24 +227,19 @@ export function NavUser({ user: userProp = null }) {
                 </div>
                 {isAuthenticated ? (
                 <Avatar className="rounded-full h-6 w-6 ring-1 ring-black/10 dark:ring-white/10 hidden lg:block">
-                  
                     <>
                       <AvatarImage src={avatarUrl ?? undefined} alt={displayName} />
                       <AvatarFallback className="rounded-full text-xs flex items-center justify-center bg-black/10 dark:bg-white/10 text-foreground">
                         {initials || "U"}
                       </AvatarFallback>
                     </>
-                  
                 </Avatar>
                 ) : (
                     <></>
                 )}
               </div>
             </SidebarMenuButton>
-            
           </DropdownMenuTrigger>
-          
-
           <DropdownMenuContent
             className="absolute right-0 top-2 w-56 min-w-56 rounded-lg shadow-lg z-50 bg-background border border-border"
             side={isMobile ? "bottom" : "right"}
@@ -240,33 +279,8 @@ export function NavUser({ user: userProp = null }) {
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator className="hidden md:block"/>
 
-                {/* Navigation Options */}
-                <DropdownMenuGroup className="hidden md:block">
-                  <Link href="/explore" passHref className="font-semibold">
-                    <DropdownMenuItem>
-                      <Search className="mr-2 h-4 w-4" />
-                      Explorer
-                    </DropdownMenuItem>
-                  </Link>
-                  <Link href="/followed" passHref className="font-semibold">
-                    <DropdownMenuItem>
-                      <Heart className="mr-2 h-4 w-4" />
-                      Suivis
-                    </DropdownMenuItem>
-                  </Link>
-                  <DropdownMenuItem className="font-semibold">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    Messsages
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="font-semibold">
-                    <Handshake className="mr-2 h-4 w-4" />
-                    Collaborations
-                  </DropdownMenuItem>
-                  <DropdownMenuItem className="font-semibold">
-                    <User className="mr-2 h-4 w-4" />
-                    Profile
-                  </DropdownMenuItem>
-                </DropdownMenuGroup>
+                {/* Navigation Options selon le rôle */}
+                <RoleMenu />
                 <DropdownMenuSeparator />
 
                 {/* Preferences and Account Options */}
@@ -274,6 +288,14 @@ export function NavUser({ user: userProp = null }) {
                   <DropdownMenuItem>
                     <Settings className="mr-2 h-4 w-4" />
                     Préférences
+                  </DropdownMenuItem>
+                </Link>
+
+                {/* Preferences and Account Options */}
+                <Link href="/settings" passHref>
+                  <DropdownMenuItem>
+                    <CreditCard className="mr-2 h-4 w-4" />
+                    Facturation
                   </DropdownMenuItem>
                 </Link>
 

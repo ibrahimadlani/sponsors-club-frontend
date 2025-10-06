@@ -7,7 +7,7 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, Users, Plus, ArrowRight, ArrowLeft, CheckCircle } from "lucide-react";
+import { Building2, Users, Plus, ArrowRight, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import { createOrganisation, joinOrganisation } from "@/lib/api";
 
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ const organisationTypes = [
   { value: "OTHER", label: "Autre", icon: "🏷️" },
 ];
 
-export function OrganisationOnboardingForm({ className, ...props }) {
+export function OrganisationOnboardingForm({ className, isRequired = false, ...props }) {
   const router = useRouter();
   const [mode, setMode] = useState(null); // "join" ou "create"
   const [loading, setLoading] = useState(false);
@@ -78,7 +78,17 @@ export function OrganisationOnboardingForm({ className, ...props }) {
     try {
       await joinOrganisation(data.invitation_code);
       toast.success("Vous avez rejoint l'organisation avec succès!");
-      router.push("/dashboard");
+      
+      // Redirection selon le contexte
+      if (isRequired) {
+        // Si l'onboarding était requis, rediriger vers explore pour les collaborateurs
+        toast.success("Onboarding complété ! Bienvenue sur la plateforme.", { duration: 3000 });
+        setTimeout(() => {
+          router.push("/explore");
+        }, 1500);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       toast.error(error.message || "Erreur lors de la connexion à l'organisation");
     } finally {
@@ -91,7 +101,17 @@ export function OrganisationOnboardingForm({ className, ...props }) {
     try {
       await createOrganisation(data);
       toast.success("Organisation créée avec succès!");
-      router.push("/dashboard");
+      
+      // Redirection selon le contexte
+      if (isRequired) {
+        // Si l'onboarding était requis, rediriger vers explore pour les collaborateurs
+        toast.success("Onboarding complété ! Bienvenue sur la plateforme.", { duration: 3000 });
+        setTimeout(() => {
+          router.push("/explore");
+        }, 1500);
+      } else {
+        router.push("/dashboard");
+      }
     } catch (error) {
       toast.error(error.message || "Erreur lors de la création de l'organisation");
     } finally {
@@ -121,9 +141,14 @@ export function OrganisationOnboardingForm({ className, ...props }) {
           transition={{ duration: 0.5 }}
           className="text-center"
         >
-          <h1 className="text-3xl font-bold mb-2">Configuration de l&apos;organisation</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {isRequired ? "⚠️ Onboarding Obligatoire" : "Configuration de l'organisation"}
+          </h1>
           <p className="text-muted-foreground">
-            Rejoignez une organisation existante ou créez la vôtre
+            {isRequired 
+              ? "Vous devez configurer votre organisation pour accéder à la plateforme"
+              : "Rejoignez une organisation existante ou créez la vôtre"
+            }
           </p>
         </motion.div>
 
@@ -207,15 +232,23 @@ export function OrganisationOnboardingForm({ className, ...props }) {
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-4"
       >
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setMode(null)}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour
-        </Button>
+        {!isRequired && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setMode(null)}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Retour
+          </Button>
+        )}
+        {isRequired && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <AlertTriangle className="h-4 w-4" />
+            Cette étape est obligatoire
+          </div>
+        )}
         <div>
           <h1 className="text-2xl font-bold">
             {mode === "join" ? "Rejoindre une organisation" : "Créer une organisation"}

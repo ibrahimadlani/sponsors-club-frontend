@@ -9,7 +9,6 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  CarouselDots,
 } from "@/components/ui/carousel";
 
 const formatEngagement = (value) => {
@@ -163,7 +162,6 @@ const ItemCard = ({ item, badgeColor = "bg-pink-600" }) => {
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex" />
             <CarouselNext className="hidden md:flex" />
-            <CarouselDots className="bottom-2" />
           </Carousel>
         </div>
       ) : (

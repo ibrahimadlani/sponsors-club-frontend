@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { userEndpoints } from "@/lib/endpoints";
 
+function redirectToLogin() {
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
+  }
+}
+
 export const useCurrentUser = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +24,10 @@ export const useCurrentUser = () => {
     } catch (err) {
       setError(err);
       setUser(null);
+      // Redirige si le token est invalide ou le refresh échoue
+      if (err?.status === 401 || /refresh/i.test(err?.message)) {
+        redirectToLogin();
+      }
       throw err;
     } finally {
       setLoading(false);
@@ -35,6 +45,10 @@ export const useCurrentUser = () => {
         if (!isMounted) return;
         setError(err);
         setUser(null);
+        // Redirige si le token est invalide ou le refresh échoue
+        if (err?.status === 401 || /refresh/i.test(err?.message)) {
+          redirectToLogin();
+        }
       } finally {
         if (isMounted) setLoading(false);
       }

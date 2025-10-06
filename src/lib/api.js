@@ -244,7 +244,13 @@ export const getAthleteBySlug = async (identifier) => {
 
 export const getAthletesPage = async (limit = 12, offset = 0) => {
   const url = `${API_BASE_URL}/api/athletes/?limit=${limit}&offset=${offset}`;
-  const res = await fetch(url, { cache: "no-store" });
+  let headers = {};
+  // Ajoute le header Authorization si token dispo
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("accessToken") || null;
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+  }
+  const res = await fetch(url, { cache: "no-store", headers });
   if (!res.ok) throw new Error("Impossible de charger les athlètes");
   const data = await res.json();
   if (Array.isArray(data)) {

@@ -21,6 +21,12 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { HandCoins, Medal } from "lucide-react";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -198,65 +204,41 @@ export function RegisterForm({ className, ...props }) {
                 <span className="relative z-10 bg-background px-2 text-muted-foreground">
                   Ou s&apos;inscrire ici
                 </span>
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              {/* First Name */}
-              <div className="grid gap-2">
+              {/* Account Type Tabs */}
+              <div className="grid gap-2 mt-4 col-span-2">
                 <div className="flex items-center">
-                  <Label htmlFor="first_name">Prénom</Label>
+                  <Label htmlFor="account_type">Type de compte</Label>
                   <AnimatePresence>
-                    {errors.first_name && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                      <XCircle className="text-red-500 w-4 h-4" />
-                    </motion.div>}
+                    {errors.account_type && (
+                      <motion.div
+                        initial={{ opacity: 0, x: -5 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -5 }}
+                        transition={{ duration: 0.3 }}
+                        className="ml-2"
+                      >
+                        <XCircle className="text-red-500 w-4 h-4" />
+                      </motion.div>
+                    )}
                   </AnimatePresence>
                 </div>
-                <Input id="first_name" {...register("first_name")} />
+                <Tabs value={accountType} onValueChange={setAccountType} className="w-full">
+                  <TabsList className="w-full">
+                    <TabsTrigger value="AGENT" className="flex-1 flex  gap-2 ">
+                      <HandCoins className="w-4 h-4" />
+                      Sponsor
+                    </TabsTrigger>
+                    <TabsTrigger value="COLLABORATOR" className="flex-1 flex items-center gap-2">
+                      <Medal className="w-4 h-4" />
+                      Athlete
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                <input type="hidden" {...register("account_type")} value={accountType} readOnly />
               </div>
-
-              {/* Last Name */}
-              <div className="grid gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="last_name">Nom</Label>
-                  <AnimatePresence>
-                    {errors.last_name && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                      <XCircle className="text-red-500 w-4 h-4" />
-                    </motion.div>}
-                  </AnimatePresence>
-                </div>
-                <Input id="last_name" {...register("last_name")} />
-              </div>
-            </div>
-
-            {/* Account Type */}
-            <div className="grid gap-2 mt-4">
-              <div className="flex items-center">
-                <Label htmlFor="account_type">Type de compte</Label>
-                <AnimatePresence>
-                  {errors.account_type && (
-                    <motion.div
-                      initial={{ opacity: 0, x: -5 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -5 }}
-                      transition={{ duration: 0.3 }}
-                      className="ml-2"
-                    >
-                      <XCircle className="text-red-500 w-4 h-4" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <Select value={accountType} onValueChange={(val) => setAccountType(val)}>
-                <SelectTrigger className="h-9">
-                  <SelectValue placeholder="Sélectionner" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="AGENT">Agent</SelectItem>
-                  <SelectItem value="COLLABORATOR">Collaborateur</SelectItem>
-                </SelectContent>
-              </Select>
-              <input type="hidden" {...register("account_type")} value={accountType} readOnly />
             </div>
 
             {/* Email */}
@@ -353,6 +335,7 @@ export function RegisterForm({ className, ...props }) {
             <Button type="submit" className="w-full mt-6" disabled={loading}>
               {loading ? "Inscription..." : "S'inscrire"}
             </Button>
+          </div>
           </form>
         </CardContent>
       </Card>

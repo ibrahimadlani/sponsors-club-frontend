@@ -1,4 +1,5 @@
 "use client";
+import { followAthlete, unfollowAthlete } from "@/lib/api";
 
 // Page: Athlete detail
 // Shows athlete header summary, media carousel, stats and charts.
@@ -340,9 +341,38 @@ const athleteGroups = Object.entries(grouped).map(([location, athletes]) => ({
   athletes,
 }));
 
+
 export default function AthletePage() {
+  // ...existing code...
+
+  // Gère le suivi/désuivi d'un athlète
+  const handleToggleFollow = async () => {
+    if (!athlete || !athlete.id) return;
+    setFollowAnim(true);
+    try {
+      if (isFollowed) {
+        await unfollowAthlete(athlete.id);
+        setIsFollowed(false);
+      } else {
+        await followAthlete(athlete.id);
+        setIsFollowed(true);
+      }
+    } catch (e) {
+      if (typeof toast === 'function') {
+        toast({
+          title: "Erreur",
+          description: "Impossible de mettre à jour le suivi.",
+          variant: "destructive",
+        });
+      } else {
+        alert("Erreur: Impossible de mettre à jour le suivi.");
+      }
+    } finally {
+      setTimeout(() => setFollowAnim(false), 600);
+    }
+  };
   const { user } = useCurrentUser();
-  const { athleteId } = useParams();
+  const { slug } = useParams();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openEventDialog, setOpenEventDialog] = useState(false);
@@ -354,7 +384,7 @@ export default function AthletePage() {
 
   useEffect(() => {
     (async () => {
-      const a = await getAthleteBySlug(athleteId);
+      const a = await getAthleteBySlug(slug);
       // Normalize backend data shape to the UI expectations
       const normalized = a
         ? {
@@ -376,7 +406,7 @@ export default function AthletePage() {
       setIsFollowed(Boolean(normalized?.is_followed));
       setLoading(false);
     })();
-  }, [athleteId]);
+  }, [slug]);
 
 
 
@@ -422,18 +452,18 @@ export default function AthletePage() {
         <div className="max-w-6xl mx-auto px-4 py-8 flex-1">
           {/* Compact header summary (title, breadcrumbs, meta) */}
           <AthleteProfileHeader
-            title={athlete.name}
-            breadcrumbs={[
-              { label: "Athletes", href: "/athletes" },
-              { label: athlete.category },
+            title={athlete.full_name || athlete.name}
+            breadcrumbs={[ 
+              { label: "Athlètes", href: "/athletes" },
+              { label: athlete.sport?.emoji + ' ' + athlete.sport?.name },
             ]}
-            levelLabel={athlete.level}
-            ageLabel={Number.isInteger(athlete.age) ? `${athlete.age} ans` : undefined}
-            nationalityLabel={athlete.nationality || undefined}
-            images={(athlete.images || []).slice(0,4)}
-            location={athlete.location}
-            followersCount={athlete.followers_count || 0}
-            priceLabel={safeFormatPrice(athlete.price)}
+            levelLabel={athlete.sport?.category}
+            ageLabel={athlete.birth_date ? `${Math.floor((new Date() - new Date(athlete.birth_date)) / (365.25*24*60*60*1000))} ans` : undefined}
+            nationalityLabel={athlete.nationality || athlete.country}
+            images={athlete.photos?.map(p => p.image) || athlete.card_photos || []}
+            location={athlete.city ? `${athlete.city}, ${athlete.country}` : athlete.country}
+            followersCount={athlete.followers_count_cached}
+            priceLabel={athlete.engagement_rate_cached ? `${athlete.engagement_rate_cached}% engagement` : undefined}
             calendarLabel="Disponible"
             isFollowed={isFollowed}
             onToggleFollow={handleToggleFollow}
@@ -507,29 +537,49 @@ export default function AthletePage() {
                 <h3 className="text-base font-semibold mb-3">Profil sportif</h3>
                 <dl className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Discipline / Catégorie</dt>
-                    <dd className="text-gray-900 dark:text-white">{athlete.category || '—'}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Sport</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.sport?.emoji} {athlete.sport?.name}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Niveau</dt>
-                    <dd className="text-gray-900 dark:text-white">{athlete.level || '—'}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Catégorie</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.sport?.category}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Club / Fédération / Équipe</dt>
-                    <dd className="text-gray-900 dark:text-white">{athlete.location || '—'}</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Disciplines</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.disciplines?.map(d => d.name).join(', ')}</dd>
                   </div>
                   <div>
-                    <dt className="text-gray-500 dark:text-gray-400">Calendrier de compétitions</dt>
-                    <dd className="text-gray-900 dark:text-white">Voir la section “Calendrier sportif” ci‑dessous</dd>
+                    <dt className="text-gray-500 dark:text-gray-400">Ville</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.city}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Nationalité</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.nationality}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Followers</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.followers_count_cached}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Engagement</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.engagement_rate_cached}%</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500 dark:text-gray-400">Date de naissance</dt>
+                    <dd className="text-gray-900 dark:text-white">{athlete.birth_date}</dd>
                   </div>
                 </dl>
                 <div className="mt-5">
-                  <h4 className="text-sm font-semibold mb-2">Palmarès</h4>
-                  <ul className="list-disc pl-5 text-sm text-gray-700 dark:text-gray-300">
-                    {timeline.slice(0, 4).map((t) => (
-                      <li key={t.id}>{t.content} {t.target} — {t.date}</li>
-                    ))}
-                  </ul>
+                  <h4 className="text-sm font-semibold mb-2">Bio</h4>
+                  <p className="text-gray-700 dark:text-gray-300">{athlete.bio}</p>
+                  <div className="mt-2 flex gap-3">
+                    {athlete.social_links?.instagram && (
+                      <a href={athlete.social_links.instagram} target="_blank" rel="noopener noreferrer" className="text-pink-600 hover:underline">Instagram</a>
+                    )}
+                    {athlete.social_links?.twitter && (
+                      <a href={athlete.social_links.twitter} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Twitter</a>
+                    )}
+                  </div>
                 </div>
               </section>
             )}

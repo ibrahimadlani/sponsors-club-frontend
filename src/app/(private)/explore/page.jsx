@@ -28,6 +28,7 @@ import {
   Sparkles,
   User,
   MapIcon,
+  BicepsFlexed,
 } from "lucide-react";
 
 // UI Components
@@ -48,7 +49,6 @@ import {
   CarouselItem,
   CarouselNext,
   CarouselPrevious,
-  CarouselDots,
 } from "@/components/ui/carousel";
 import { API_BASE_URL } from "@/lib/api";
 import { getAthletes } from "@/lib/api";
@@ -239,7 +239,6 @@ const ItemComponent = ({ athlete }) => {
             </CarouselContent>
             <CarouselPrevious className="hidden md:flex" />
             <CarouselNext className="hidden md:flex" />
-            <CarouselDots className="bottom-2" />
           </Carousel>
         </div>
       ) : (
@@ -255,7 +254,10 @@ const ItemComponent = ({ athlete }) => {
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center bg-muted text-sm text-muted-foreground">
-              Visuel en attente
+              <div className="opacity-20">
+                <Logo className=""/>
+              </div>
+              
             </div>
           )}
         </Link>

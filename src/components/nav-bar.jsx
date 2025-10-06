@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { Building, ShieldHalf, User } from "lucide-react";
+import { BicepsFlexed, Building, ChartNoAxesCombined, Handshake, Heart, MessagesSquare, ShieldHalf, User, Users } from "lucide-react";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -15,9 +15,10 @@ import {
 } from "@/components/ui/navigation-menu";
 
 const NAV_LINKS = [
-  { href: "/athletes", label: "Athlètes", icon: User },
-  { href: "/teams", label: "Équipes", icon: ShieldHalf },
-  { href: "/organisations", label: "Organisations", icon: Building },
+  { href: "/athletes", label: "Athlètes", icon: BicepsFlexed },
+  { href: "/follows", label: "Suivis", icon: Heart },
+  { href: "/collaborations", label: "Collabs", icon: Handshake },
+  { href: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
 ];
 
 export function NavMenu() {

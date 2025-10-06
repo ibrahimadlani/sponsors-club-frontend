@@ -7,6 +7,68 @@
 // Page: Athletes listing
 // Factorized header and grid; comments added for clarity.
 import { useState, useEffect, useRef } from "react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+// Barre de recherche et filtres shadcn/ui
+function AthleteSearchBar({ value, onChange, sport, onSport, country, onCountry, city, onCity, sports, countries, cities }) {
+  return (
+    <div className="w-full max-w-5xl mx-auto mb-6 flex flex-col md:flex-row gap-3 md:gap-4 items-center">
+      <div className="flex flex-1 flex-col gap-1">
+        <Label htmlFor="athlete-search">Recherche</Label>
+        <Input
+          id="athlete-search"
+          type="text"
+          value={value}
+          onChange={e => onChange(e.target.value)}
+          placeholder="Rechercher un athlète, sport, ville..."
+        />
+      </div>
+      <div className="flex flex-col gap-1 min-w-[140px]">
+        <Label htmlFor="sport-select">Sport</Label>
+        <Select value={sport || "all"} onValueChange={val => onSport(val === "all" ? "" : val)}>
+          <SelectTrigger id="sport-select">
+            <SelectValue placeholder="Sport" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            {sports.map((s) => (
+              <SelectItem key={s} value={s}>{s}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1 min-w-[120px]">
+        <Label htmlFor="country-select">Pays</Label>
+        <Select value={country || "all"} onValueChange={val => onCountry(val === "all" ? "" : val)}>
+          <SelectTrigger id="country-select">
+            <SelectValue placeholder="Pays" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous</SelectItem>
+            {countries.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="flex flex-col gap-1 min-w-[120px]">
+        <Label htmlFor="city-select">Ville</Label>
+        <Select value={city || "all"} onValueChange={val => onCity(val === "all" ? "" : val)}>
+          <SelectTrigger id="city-select">
+            <SelectValue placeholder="Ville" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes</SelectItem>
+            {cities.map((c) => (
+              <SelectItem key={c} value={c}>{c}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+}
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import PageHeader from "@/components/page-header";
@@ -102,15 +164,24 @@ const athletesData = [
   },
 ];
 
+
 export default function AthletesPage() {
   const { user } = useCurrentUser();
-
-  // Local state: loading flag and fetched items
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [fetchingMore, setFetchingMore] = useState(false);
+
+  const [search, setSearch] = useState("");
+  const [sport, setSport] = useState("");
+  const [country, setCountry] = useState("");
+  const [city, setCity] = useState("");
+
+  // Génère les options uniques pour les filtres
+  const sports = Array.from(new Set(items.map((a) => a.sport?.name).filter(Boolean))).sort();
+  const countries = Array.from(new Set(items.map((a) => a.country).filter(Boolean))).sort();
+  const cities = Array.from(new Set(items.map((a) => a.city).filter(Boolean))).sort();
 
   // Initial page
   useEffect(() => {
@@ -158,16 +229,41 @@ export default function AthletesPage() {
     return () => observer.disconnect();
   }, [offset, hasMore, fetchingMore, loading]);
 
+
+  // Filtrage combiné
+  const filteredItems = items.filter((item) => {
+    const q = search.trim().toLowerCase();
+    const matchSearch = !q ||
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.full_name && item.full_name.toLowerCase().includes(q)) ||
+      (item.sport?.name && item.sport.name.toLowerCase().includes(q)) ||
+      (item.city && item.city.toLowerCase().includes(q)) ||
+      (item.country && item.country.toLowerCase().includes(q));
+    const matchSport = !sport || (item.sport?.name === sport);
+    const matchCountry = !country || (item.country === country);
+    const matchCity = !city || (item.city === city);
+    return matchSearch && matchSport && matchCountry && matchCity;
+  });
+
   return (
     <SidebarProvider>
       <SidebarInset className="min-h-screen flex flex-col">
-        {/* Shared app header */}
         <PageHeader user={user} />
-
-        {/* Main content: grid of athlete cards */}
         <div className="flex flex-1 flex-col gap-4 px-6 md:px-12 2xl:px-24 py-3">
-          <ItemsGrid loading={loading} items={items} badgeColor="bg-pink-600" />
-          {/* Additional skeletons while fetching more */}
+          <AthleteSearchBar
+            value={search}
+            onChange={setSearch}
+            sport={sport}
+            onSport={setSport}
+            country={country}
+            onCountry={setCountry}
+            city={city}
+            onCity={setCity}
+            sports={sports}
+            countries={countries}
+            cities={cities}
+          />
+          <ItemsGrid loading={loading} items={filteredItems} badgeColor="bg-pink-600" />
           {fetchingMore && (
             <div className="grid gap-x-6 gap-y-12 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
               {Array(8).fill(0).map((_, i) => (
@@ -175,7 +271,6 @@ export default function AthletesPage() {
               ))}
             </div>
           )}
-          {/* Invisible sentinel for infinite scroll trigger */}
           {hasMore && <div ref={sentinelRef} className="h-2" />}
         </div>
       </SidebarInset>
