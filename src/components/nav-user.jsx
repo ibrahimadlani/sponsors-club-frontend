@@ -77,7 +77,6 @@ export function NavUser({ user: userProp = null }) {
   const [loadingProfile, setLoadingProfile] = useState(!userProp);
 
   useEffect(() => {
-    console.log("NavUser: userProp changed", user);
     if (userProp) {
       setUser(userProp);
       setLoadingProfile(false);

@@ -6,7 +6,6 @@ import { followAthlete, unfollowAthlete } from "@/lib/api";
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
 import { useEffect, useState } from "react";
 import { BadgeCheck, Instagram, Facebook, Youtube, MapIcon, Check, ThumbsUp, User as UserIcon } from "lucide-react";
 import FollowerGrowthChart from "@/components/bar-chart";
@@ -26,6 +25,7 @@ import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carouse
 import { NavUser } from "@/components/nav-user";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { Globe, Euro, ChevronDown, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon } from "lucide-react";
+import ResponsiveImage from "@/components/responsive-image";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AthleteProfileHeader from "@/components/athlete-profile";
 import PageHeader from "@/components/page-header";
@@ -729,11 +729,14 @@ export default function AthletePage() {
             <ul role="list" className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4 xl:gap-x-8">
               {(athlete.images || []).map((src, idx) => (
                 <li key={`${src}-${idx}`} className="relative">
-                  <div className="group overflow-hidden rounded-lg bg-gray-100 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-600 dark:bg-gray-800 dark:focus-within:outline-indigo-500">
-                    <img
-                      alt=""
+                  <div className="group relative overflow-hidden rounded-lg bg-gray-100 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-indigo-600 dark:bg-gray-800 dark:focus-within:outline-indigo-500">
+                    <ResponsiveImage
+                      alt={`${athlete.name} - photo ${idx + 1}`}
                       src={src}
-                      className="pointer-events-none aspect-[10/7] rounded-lg object-cover outline -outline-offset-1 outline-black/5 group-hover:opacity-75 dark:outline-white/10"
+                      fill
+                      className="aspect-[10/7] rounded-lg"
+                      imageClassName="pointer-events-none rounded-lg object-cover outline -outline-offset-1 outline-black/5 group-hover:opacity-75 dark:outline-white/10"
+                      sizes="(min-width: 1280px) 25vw, (min-width: 768px) 33vw, 100vw"
                     />
                     <button type="button" className="absolute inset-0 focus:outline-hidden">
                       <span className="sr-only">Voir {athlete.name}</span>
@@ -766,11 +769,14 @@ export default function AthletePage() {
                   </div>
                   <div className="grid grid-cols-3 gap-2">
                     {(athlete.images || []).slice(0, 3).map((src, i) => (
-                      <img
+                      <ResponsiveImage
                         key={`${platform}-${i}`}
                         src={src}
                         alt={`${platform} post ${i + 1}`}
-                        className="w-full h-24 object-cover rounded-lg"
+                        fill
+                        className="h-24 w-full"
+                        imageClassName="object-cover rounded-lg"
+                        sizes="(min-width: 768px) 33vw, 100vw"
                       />
                     ))}
                   </div>

@@ -8,11 +8,12 @@
  */
 
 // React Imports
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Next.js Imports
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname } from "next/navigation";
 
 // Third-Party Library Imports
 import {
@@ -31,43 +32,19 @@ import {
   Globe,
   Euro,
   ChevronDown,
+  Handshake,
+  MessageSquare,
+  Sparkles,
+  User,
+  MapIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
 // UI Components
 import { Button } from "@/components/ui/button";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Logo from "@/components/ui/logo";
-
-// Hooks
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-
-// React Imports
-import { useState, useEffect, useCallback } from "react";
-
-// Next.js Imports
-import Link from "next/link";
-import Image from "next/image";
-import { usePathname } from "next/navigation";
-
-// Third-Party Library Imports
-import {
-  Globe,
-  Euro,
-  ChevronDown,
-  Search,
-  Handshake,
-  MessageSquare,
-  Heart,
-  Sparkles,
-  User,
-  MapIcon,
-} from "lucide-react";
-
-// UI Components
-import { Button } from "@/components/ui/button";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import Logo from "@/components/ui/logo";
 import Skeleton from "@/components/skeleton-item";
 
@@ -75,8 +52,6 @@ import Skeleton from "@/components/skeleton-item";
 import { NavUser } from "@/components/nav-user";
 import { NavMenu } from "@/components/nav-bar";
 import AthletesTabs from "@/components/athletes-tabs";
-
-// Charts
 
 // Hooks
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -437,7 +412,7 @@ export default function Page() {
     content = (
       <div className="flex flex-col items-center justify-center py-16 text-center gap-4">
         <p className="text-sm text-muted-foreground max-w-md">
-          Aucun athlète n'est disponible pour le moment. Revenez plus tard ou actualisez la page.
+          Aucun athlète n&apos;est disponible pour le moment. Revenez plus tard ou actualisez la page.
         </p>
         <Button onClick={loadAthletes} variant="outline">
           Actualiser

@@ -7,8 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner"; // Import de sonner pour les notifications
 import { persistAuthTokens } from "@/lib/api";
 import { userEndpoints } from "@/lib/endpoints";
-import { motion, AnimatePresence } from "framer-motion"; // Pour animer les erreurs
-import { Loader, XCircle } from "lucide-react"; // Icones Lucide
+import { Loader } from "lucide-react"; // Icones Lucide
 import { Suspense } from "react";
 
 import { cn } from "@/lib/utils";
@@ -22,6 +21,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import FormFieldError from "@/components/forms/form-field-error";
 
 // 🔹 Définir le schéma de validation avec Zod
 const loginSchema = z.object({
@@ -29,6 +29,14 @@ const loginSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters long"),
 });
 
+/**
+ * LoginFormContent renders the SponsorsClub authentication form.
+ * It validates credentials with Zod, persists tokens and redirects on success.
+ *
+ * @param {object} props - Component props forwarded to the root container.
+ * @param {string} [props.className] - Additional Tailwind classes for the wrapper.
+ * @returns {JSX.Element} Interactive login form.
+ */
 export function LoginFormContent({ className, ...props }) {
   const {
     register,
@@ -144,19 +152,11 @@ export function LoginFormContent({ className, ...props }) {
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="email">Email</Label>
-                  <AnimatePresence>
-                    {errors.email && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="ml-2"
-                      >
-                        <XCircle className="text-red-500 w-4 h-4" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <FormFieldError
+                    message={errors.email?.message}
+                    iconClassName="ml-2"
+                    showMessage={false}
+                  />
                 </div>
                 <Input
                   id="email"
@@ -164,25 +164,22 @@ export function LoginFormContent({ className, ...props }) {
                   {...register("email")}
                   placeholder="m@example.com"
                 />
+                <FormFieldError
+                  message={errors.email?.message}
+                  showIcon={false}
+                  className="min-h-[1rem]"
+                />
               </div>
 
               {/* Password Input */}
               <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="password">Mot de passe</Label>
-                  <AnimatePresence>
-                    {errors.password && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="ml-2"
-                      >
-                        <XCircle className="text-red-500 w-4 h-4" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <FormFieldError
+                    message={errors.password?.message}
+                    iconClassName="ml-2"
+                    showMessage={false}
+                  />
                   <a
                     href="/reset-password"
                     tabIndex={-1}
@@ -195,6 +192,11 @@ export function LoginFormContent({ className, ...props }) {
                   id="password"
                   type="password"
                   {...register("password")}
+                />
+                <FormFieldError
+                  message={errors.password?.message}
+                  showIcon={false}
+                  className="min-h-[1rem]"
                 />
               </div>
 
@@ -233,6 +235,13 @@ export function LoginFormContent({ className, ...props }) {
 }
 
 // Wrapper component with Suspense
+/**
+ * LoginForm wraps {@link LoginFormContent} with a suspense boundary so the form
+ * can be embedded in server components without triggering hydration warnings.
+ *
+ * @param {object} props - Props forwarded to the content component.
+ * @returns {JSX.Element} Suspense enabled login form.
+ */
 export function LoginForm(props) {
   return (
     <Suspense fallback={<div>Loading...</div>}>
