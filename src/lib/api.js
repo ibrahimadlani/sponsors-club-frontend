@@ -321,70 +321,70 @@ export const logout = () => {
 };
 
 // 🔹 Fetch User Profile
-export const fetchUserProfile = async () => {
-  let token = localStorage.getItem("accessToken");
-  if (!token) throw new Error("User not authenticated");
-
-  let res = await fetch(`${API_BASE_URL}/api/users/me/`, {
-    method: "GET",
-    headers: { Authorization: `Bearer ${token}` },
-  });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/users/me/`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
-    });
+const getStoredAccessToken = () => {
+  if (typeof window === "undefined") return null;
+  try {
+    return localStorage.getItem("accessToken");
+  } catch (error) {
+    console.warn("Unable to read access token", error);
+    return null;
   }
+};
 
-  if (!res.ok) throw new Error("Failed to fetch user profile");
-  return res.json();
+const ensureObjectPayload = (data) => {
+  if (data && typeof data === "object" && !Array.isArray(data)) {
+    return data;
+  }
+  throw new Error("Les données de mise à jour doivent être un objet JSON valide");
+};
+
+const authedRequest = async (path, { method = "GET", body } = {}) => {
+  const token = getStoredAccessToken();
+  if (!token) throw new Error("Utilisateur non authentifié");
+
+  const execute = async (accessToken) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+
+  let response = await execute(token);
+  if (response.status === 401) {
+    const refreshedToken = await refreshAccessToken();
+    response = await execute(refreshedToken);
+  }
+  return response;
+};
+
+export const fetchUserProfile = async () => {
+  const response = await authedRequest("/api/users/me/");
+  if (!response.ok) throw new Error("Failed to fetch user profile");
+  return response.json();
 };
 
 // 🔹 Update User Profile
 // 🔹 Mettre à jour le profil utilisateur avec PATCH
-export const updateProfile = async (id, data) => {
-  let token = localStorage.getItem("accessToken");
-  console.log(data);
-  if (!token) throw new Error("Utilisateur non authentifié");
-
-  // 🔥 Récupérer l'ID utilisateur via fetchUserProfile()
-  const user = await fetchUserProfile();
-  const userId = user.id; // Assurez-vous que l'ID est bien récupéré depuis le profil utilisateur
-
-  // ✅ Vérification de la structure du payload avant l'envoi
-  if (typeof data !== "object") {
-    throw new Error("Les données de mise à jour doivent être un objet JSON valide");
+export const updateProfile = async (data) => {
+  const payload = ensureObjectPayload(data ?? {});
+  const response = await authedRequest("/api/users/me/", { method: "PATCH", body: payload });
+  if (!response.ok) {
+    const errorResponse = await response.json().catch(() => ({}));
+    throw new Error(errorResponse?.message || "Échec de la mise à jour du profil");
   }
-
-  let res = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
-    method: "PATCH", // ✅ Utilisation de PATCH pour ne modifier que certains champs
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(data), // ✅ S'assurer que data est bien stringifié
-  });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/users/${userId}/`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(data), // ✅ Même correction ici
-    });
+  const text = await response.text();
+  if (!text) {
+    return null;
   }
-
-  if (!res.ok) {
-    const errorResponse = await res.json();
-    throw new Error(errorResponse.message || "Échec de la mise à jour du profil");
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.warn("Unable to parse profile update response", error);
+    return null;
   }
-
-  return res.json();
 };
 
 

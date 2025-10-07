@@ -3,10 +3,9 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Pour les notifications toast
-import { motion, AnimatePresence } from "framer-motion"; // Pour animer les erreurs
-import { XCircle } from "lucide-react"; // Icône d'erreur
 import { userEndpoints } from "@/lib/endpoints";
 
 import { cn } from "@/lib/utils";
@@ -33,6 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import FormFieldError from "@/components/forms/form-field-error";
 
 // Règles de validation par indicatif
 const PHONE_RULES = {
@@ -78,6 +78,14 @@ const registerSchema = z
 
   });
 
+/**
+ * RegisterForm renders the SponsorsClub onboarding form for agents and collaborators.
+ * It validates input with Zod, normalises phone numbers and calls the register endpoint.
+ *
+ * @param {object} props - Component props.
+ * @param {string} [props.className] - Optional Tailwind classes for the wrapper.
+ * @returns {JSX.Element} Interactive registration form.
+ */
 export function RegisterForm({ className, ...props }) {
   const {
     register,
@@ -144,20 +152,19 @@ export function RegisterForm({ className, ...props }) {
     }
   };
 
-  // Fonction utilitaire pour afficher une icône d'erreur animée
-  const ErrorIcon = () => (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0, x: -5 }}
-        animate={{ opacity: 1, x: 0 }}
-        exit={{ opacity: 0, x: -5 }}
-        transition={{ duration: 0.3 }}
-        className="ml-2"
-      >
-        <XCircle className="text-red-500 w-4 h-4" />
-      </motion.div>
-    </AnimatePresence>
+  /**
+   * Renders the animated error indicator displayed next to field labels.
+   *
+   * @param {{ message?: string }} props - Error indicator props.
+   * @returns {JSX.Element|null} Animated error icon.
+   */
+  const ErrorIcon = ({ message }) => (
+    <FormFieldError message={message} iconClassName="ml-2" showMessage={false} />
   );
+
+  ErrorIcon.propTypes = {
+    message: PropTypes.string,
+  };
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
@@ -211,19 +218,7 @@ export function RegisterForm({ className, ...props }) {
               <div className="grid gap-2 mt-4 col-span-2">
                 <div className="flex items-center">
                   <Label htmlFor="account_type">Type de compte</Label>
-                  <AnimatePresence>
-                    {errors.account_type && (
-                      <motion.div
-                        initial={{ opacity: 0, x: -5 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -5 }}
-                        transition={{ duration: 0.3 }}
-                        className="ml-2"
-                      >
-                        <XCircle className="text-red-500 w-4 h-4" />
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+                  <ErrorIcon message={errors.account_type?.message} />
                 </div>
                 <Tabs value={accountType} onValueChange={setAccountType} className="w-full">
                   <TabsList className="w-full">
@@ -238,6 +233,7 @@ export function RegisterForm({ className, ...props }) {
                   </TabsList>
                 </Tabs>
                 <input type="hidden" {...register("account_type")} value={accountType} readOnly />
+                <FormFieldError message={errors.account_type?.message} showIcon={false} />
               </div>
             </div>
 
@@ -245,13 +241,10 @@ export function RegisterForm({ className, ...props }) {
             <div className="grid gap-2 mt-4">
               <div className="flex items-center">
                 <Label htmlFor="email">Email</Label>
-                <AnimatePresence>
-                  {errors.email && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                    <XCircle className="text-red-500 w-4 h-4" />
-                  </motion.div>}
-                </AnimatePresence>
+                <ErrorIcon message={errors.email?.message} />
               </div>
               <Input id="email" type="email" {...register("email")} />
+              <FormFieldError message={errors.email?.message} showIcon={false} />
             </div>
 
 
@@ -260,11 +253,7 @@ export function RegisterForm({ className, ...props }) {
               <div className="grid col-span-3 gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="phone_country_code">Indicatif</Label>
-                  <AnimatePresence>
-                    {errors.phone_country_code && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                      <XCircle className="text-red-500 w-4 h-4" />
-                    </motion.div>}
-                  </AnimatePresence>
+                  <ErrorIcon message={errors.phone_country_code?.message} />
                 </div>
                 <Select value={phoneCode} onValueChange={(val) => setPhoneCode(val)}>
                   <SelectTrigger className="h-9">
@@ -276,59 +265,48 @@ export function RegisterForm({ className, ...props }) {
                     <SelectItem value="+44">🇬🇧 +44</SelectItem>
                   </SelectContent>
                 </Select>
-                {/* Champ caché pour intégrer à react-hook-form */}
                 <input type="hidden" {...register("phone_country_code")} value={phoneCode} readOnly />
+                <FormFieldError message={errors.phone_country_code?.message} showIcon={false} />
               </div>
 
               <div className="grid col-span-5 gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="phone_number">Numéro de téléphone</Label>
-                  <AnimatePresence>
-                    {errors.phone_number && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                      <XCircle className="text-red-500 w-4 h-4" />
-                    </motion.div>}
-                  </AnimatePresence>
+                  <ErrorIcon message={errors.phone_number?.message} />
                 </div>
                 <Input
                   id="phone_number"
                   placeholder={PHONE_RULES[phoneCode]?.example || "ex: numéro"}
                   {...register("phone_number")}
                   onChange={(e) => {
-                    // Autoriser seulement les chiffres à l'entrée
                     const digits = e.target.value.replace(/\D/g, "");
-                    // Limiter selon l'indicatif sélectionné
                     const rule = PHONE_RULES[phoneCode];
                     const limited = rule ? digits.slice(0, rule.max) : digits.slice(0, 15);
                     e.target.value = limited;
                   }}
                 />
-                </div>
+                <FormFieldError message={errors.phone_number?.message} showIcon={false} />
+              </div>
             </div>
 
             {/* Password */}
             <div className="grid gap-2 mt-4">
               <div className="flex items-center">
                 <Label htmlFor="password">Mot de passe</Label>
-                <AnimatePresence>
-                  {errors.password && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                    <XCircle className="text-red-500 w-4 h-4" />
-                  </motion.div>}
-                </AnimatePresence>
+                <ErrorIcon message={errors.password?.message} />
               </div>
               <Input id="password" type="password" {...register("password")} />
+              <FormFieldError message={errors.password?.message} showIcon={false} />
             </div>
 
             {/* Confirm Password */}
             <div className="grid gap-2 mt-4">
               <div className="flex items-center">
                 <Label htmlFor="confirm_password">Confirmer le mot de passe</Label>
-                <AnimatePresence>
-                  {errors.confirm_password && <motion.div initial={{ opacity: 0, x: -5 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -5 }} transition={{ duration: 0.3 }} className="ml-2">
-                    <XCircle className="text-red-500 w-4 h-4" />
-                  </motion.div>}
-                </AnimatePresence>
+                <ErrorIcon message={errors.confirm_password?.message} />
               </div>
               <Input id="confirm_password" type="password" {...register("confirm_password")} />
+              <FormFieldError message={errors.confirm_password?.message} showIcon={false} />
             </div>
 
             {/* Bouton de soumission */}
