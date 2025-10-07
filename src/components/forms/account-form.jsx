@@ -1,23 +1,12 @@
 "use client";
 
-import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
-import { CalendarIcon, Check, ChevronsUpDown } from "lucide-react";
-import { useForm } from "react-hook-form";
+import { useCallback, useEffect, useState } from "react";
 import { z } from "zod";
-
-import { cn } from "@/lib/utils";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   Form,
   FormControl,
@@ -27,170 +16,210 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-
-// Liste des langues disponibles
-const languages = [
-  { label: "English", value: "en" },
-  { label: "French", value: "fr" },
-  { label: "German", value: "de" },
-  { label: "Spanish", value: "es" },
-  { label: "Portuguese", value: "pt" },
-  { label: "Russian", value: "ru" },
-  { label: "Japanese", value: "ja" },
-  { label: "Korean", value: "ko" },
-  { label: "Chinese", value: "zh" },
-];
+import { paymentEndpoints } from "@/lib/endpoints";
 
 const accountFormSchema = z.object({
-  name: z
-    .string()
-    .min(2, { message: "Name must be at least 2 characters." })
-    .max(30, { message: "Name must not be longer than 30 characters." }),
-  dob: z.date({ required_error: "A date of birth is required." }),
-  language: z.string({ required_error: "Please select a language." }),
+  planId: z.string({ required_error: "Veuillez sélectionner une formule." }).min(1),
 });
 
-// Valeurs par défaut (pouvant provenir d'une base de données ou d'une API)
-const defaultValues = {
-  // name: "Your name",
-  // dob: new Date("2023-01-23"),
+const formatPlanPrice = (plan) => {
+  const amount = plan?.price ?? plan?.amount ?? plan?.unit_amount;
+  if (typeof amount !== "number") return "Tarif non disponible";
+  const currency = (plan?.currency || "EUR").toString().toUpperCase();
+  const interval = plan?.interval || plan?.interval_unit || plan?.billing_interval;
+  try {
+    const price = new Intl.NumberFormat("fr-FR", {
+      style: "currency",
+      currency,
+      minimumFractionDigits: 2,
+    }).format(amount / 100);
+    return interval ? `${price} / ${interval}` : price;
+  } catch (error) {
+    console.warn("Unable to format price", error);
+    return `${amount / 100} ${currency}`;
+  }
+};
+
+const formatDate = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
+  }).format(date);
 };
 
 export function AccountForm() {
   const form = useForm({
     resolver: zodResolver(accountFormSchema),
-    defaultValues,
+    defaultValues: { planId: "" },
   });
+  const [plans, setPlans] = useState([]);
+  const [subscription, setSubscription] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  function onSubmit(data) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
-  }
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [plansPayload, subscriptionPayload] = await Promise.all([
+        paymentEndpoints
+          .listPlans()
+          .then((response) => (Array.isArray(response) ? response : []))
+          .catch((error) => {
+            console.warn("Unable to load plans", error);
+            return [];
+          }),
+        paymentEndpoints
+          .getMySubscription()
+          .catch((error) => {
+            if (error?.status === 404) {
+              return null;
+            }
+            throw error;
+          }),
+      ]);
+      setPlans(plansPayload);
+      setSubscription(subscriptionPayload);
+      form.reset({ planId: subscriptionPayload?.plan?.id || "" });
+    } catch (error) {
+      console.error(error);
+      toast.error("Impossible de charger vos informations de facturation.");
+    } finally {
+      setLoading(false);
+    }
+  }, [form]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const onSubmit = async ({ planId }) => {
+    if (!planId) {
+      toast.error("Sélectionnez une formule pour continuer.");
+      return;
+    }
+    if (subscription?.plan?.id === planId && !subscription?.cancel_at_period_end) {
+      toast.info("Vous êtes déjà sur cette formule.");
+      return;
+    }
+    setActionLoading(true);
+    try {
+      const session = await paymentEndpoints.createCheckoutSession({ plan_id: planId });
+      const redirectUrl = session?.checkout_url || session?.url;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
+        return;
+      }
+      toast.success("Session de paiement créée. Consultez votre messagerie pour continuer.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Impossible de créer la session de paiement.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!subscription) return;
+    setActionLoading(true);
+    try {
+      await paymentEndpoints.cancelMySubscription();
+      toast.success("Votre abonnement sera annulé à la fin de la période en cours.");
+      await loadData();
+    } catch (error) {
+      console.error(error);
+      toast.error("Impossible d&apos;annuler l&apos;abonnement.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Your name" {...field} />
-              </FormControl>
-              <FormDescription>
-                This is the name that will be displayed on your profile and in emails.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
+    <div className="space-y-8">
+      <section className="rounded-lg border bg-card text-card-foreground shadow-sm">
+        <div className="space-y-2 border-b p-4">
+          <h4 className="text-base font-semibold">Abonnement actuel</h4>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Chargement des détails...</p>
+          ) : subscription ? (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>
+                Formule : <span className="font-medium text-foreground">{subscription?.plan?.name || subscription?.plan?.nickname || "Plan personnalisé"}</span>
+              </p>
+              {subscription?.status ? (
+                <p>
+                  Statut : <span className="font-medium text-foreground">{subscription.status}</span>
+                </p>
+              ) : null}
+              {subscription?.current_period_end ? (
+                <p>
+                  Renouvellement le {formatDate(subscription.current_period_end)}
+                </p>
+              ) : null}
+              {subscription?.cancel_at_period_end ? (
+                <p className="text-amber-600 dark:text-amber-400">
+                  L&apos;abonnement sera résilié à la fin de la période.
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Aucun abonnement actif pour le moment.</p>
           )}
-        />
-        <FormField
-          control={form.control}
-          name="dob"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Date of birth</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-[240px] pl-3 text-left font-normal",
-                        !field.value && "text-muted-foreground"
-                      )}
-                    >
-                      {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                      <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={field.value}
-                    onSelect={field.onChange}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                Your date of birth is used to calculate your age.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="language"
-          render={({ field }) => (
-            <FormItem className="flex flex-col">
-              <FormLabel>Language</FormLabel>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      className={cn("w-[200px] justify-between", !field.value && "text-muted-foreground")}
-                    >
-                      {field.value
-                        ? languages.find((language) => language.value === field.value)?.label
-                        : "Select language"}
-                      <ChevronsUpDown className="opacity-50" />
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent className="w-[200px] p-0">
-                  <Command>
-                    <CommandInput placeholder="Search language..." />
-                    <CommandList>
-                      <CommandEmpty>No language found.</CommandEmpty>
-                      <CommandGroup>
-                        {languages.map((language) => (
-                          <CommandItem
-                            value={language.label}
-                            key={language.value}
-                            onSelect={() => {
-                              form.setValue("language", language.value);
-                            }}
-                          >
-                            <Check
-                              className={cn("mr-2", language.value === field.value ? "opacity-100" : "opacity-0")}
-                            />
-                            {language.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              <FormDescription>
-                This is the language that will be used in the dashboard.
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit">Update account</Button>
-      </form>
-    </Form>
+        </div>
+        <div className="flex items-center justify-between gap-3 p-4">
+          <div className="text-sm text-muted-foreground">
+            {subscription?.plan ? formatPlanPrice(subscription.plan) : "Sélectionnez une formule pour démarrer."}
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleCancel}
+            disabled={!subscription || actionLoading}
+          >
+            {actionLoading ? "Traitement..." : "Annuler l&apos;abonnement"}
+          </Button>
+        </div>
+      </section>
+
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <FormField
+            control={form.control}
+            name="planId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Choisir une formule</FormLabel>
+                <FormControl>
+                  <select
+                    {...field}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <option value="">Sélectionnez une formule</option>
+                    {plans.map((plan) => (
+                      <option key={plan.id} value={plan.id}>
+                        {(plan.name || plan.nickname || "Plan") + " – " + formatPlanPrice(plan)}
+                      </option>
+                    ))}
+                  </select>
+                </FormControl>
+                <FormDescription>
+                  Sélectionnez le plan qui correspond le mieux à vos besoins.
+                </FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex items-center gap-3">
+            <Button type="submit" disabled={actionLoading || loading || plans.length === 0}>
+              {actionLoading ? "Traitement..." : "Mettre à jour la formule"}
+            </Button>
+            {plans.length === 0 ? (
+              <span className="text-sm text-muted-foreground">Aucune formule disponible pour le moment.</span>
+            ) : null}
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

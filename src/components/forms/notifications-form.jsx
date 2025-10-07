@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-
 import { toast } from "sonner";
+
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -18,43 +20,53 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Switch } from "@/components/ui/switch";
-import Link from "next/link";
+import { loadSettings, persistSettings } from "@/lib/settings-storage";
+
+const STORAGE_SCOPE = "notifications";
 
 const notificationsFormSchema = z.object({
   type: z.enum(["all", "mentions", "none"], {
     required_error: "You need to select a notification type.",
   }),
-  mobile: z.boolean().default(false).optional(),
-  communication_emails: z.boolean().default(false).optional(),
-  social_emails: z.boolean().default(false).optional(),
-  marketing_emails: z.boolean().default(false).optional(),
+  mobile: z.boolean().default(false),
+  communication_emails: z.boolean().default(false),
+  social_emails: z.boolean().default(false),
+  marketing_emails: z.boolean().default(false),
   security_emails: z.boolean(),
 });
 
-// Ces valeurs peuvent provenir de votre base de données ou API.
 const defaultValues = {
+  type: "all",
+  mobile: false,
   communication_emails: false,
   marketing_emails: false,
   social_emails: true,
   security_emails: true,
 };
 
-export function NotificationsForm() {
+export function NotificationsForm({ userId }) {
   const form = useForm({
     resolver: zodResolver(notificationsFormSchema),
     defaultValues,
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(data) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
-  }
+  useEffect(() => {
+    const stored = loadSettings(STORAGE_SCOPE, defaultValues, userId);
+    form.reset(stored);
+  }, [form, userId]);
+
+  const onSubmit = async (data) => {
+    setSubmitting(true);
+    try {
+      persistSettings(STORAGE_SCOPE, data, userId);
+      toast.success("Préférences de notification enregistrées.");
+    } catch (error) {
+      toast.error("Impossible d'enregistrer vos préférences.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -213,7 +225,9 @@ export function NotificationsForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Update notifications</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Enregistrement..." : "Mettre à jour"}
+        </Button>
       </form>
     </Form>
   );

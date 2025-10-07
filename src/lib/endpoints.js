@@ -233,7 +233,7 @@ export const utilityEndpoints = {
     apiRequest("/auth/reset-password/confirm/", { method: "POST", body: payload }),
 };
 
-export default {
+const endpoints = {
   analytics: analyticsEndpoints,
   athletes: athleteEndpoints,
   clauses: clauseTemplateEndpoints,
@@ -248,3 +248,5 @@ export default {
   users: userEndpoints,
   utilities: utilityEndpoints,
 };
+
+export default endpoints;

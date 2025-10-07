@@ -20,13 +20,6 @@ import {
 } from "lucide-react";
 
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-
-import {
   Breadcrumb,
   BreadcrumbItem,
   BreadcrumbLink,
@@ -34,7 +27,34 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
+import ResponsiveImage from "@/components/responsive-image";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
+/**
+ * AthleteProfileHeader renders the hero section of an athlete profile page.
+ * It displays breadcrumbs, key metadata and a responsive photo collage.
+ *
+ * @param {object} props - Component props.
+ * @param {string} props.title - Page title.
+ * @param {Array<{label: string, href?: string}>} props.breadcrumbs - Ordered breadcrumb trail.
+ * @param {string} props.levelLabel - Label describing the engagement level.
+ * @param {string} [props.ageLabel] - Optional age descriptor.
+ * @param {string} [props.nationalityLabel] - Optional nationality descriptor.
+ * @param {string} props.location - Athlete location label.
+ * @param {string} props.priceLabel - Pricing label for the athlete.
+ * @param {string} props.calendarLabel - Availability label for the calendar badge.
+ * @param {string[]} props.images - Gallery images for the collage.
+ * @param {boolean} props.isFollowed - Whether the athlete is currently followed by the user.
+ * @param {() => void} [props.onToggleFollow] - Callback toggling follow status.
+ * @param {boolean} props.followAnimating - Indicates the follow button animation state.
+ * @param {number} props.followersCount - Number of followers displayed next to the CTA.
+ * @returns {JSX.Element} Hero header for the athlete profile page.
+ */
 export default function AthleteProfileHeader({
   title = "Back End Developer",
   breadcrumbs = [
@@ -203,25 +223,53 @@ export default function AthleteProfileHeader({
         {/* Block 1: visible on all, spans 2/3 on md, 4/6 on lg */}
         <div className="flex p-px md:col-span-2 lg:col-span-4">
           <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm outline outline-black/5 max-lg:rounded-t-4xl lg:rounded-tl-4xl dark:bg-gray-800 dark:shadow-none dark:outline-white/15">
-            <img alt="" src={images[0] || "/images/placeholder.jpg"} className="h-80 w-full object-cover object-center" />
+            <ResponsiveImage
+              alt={`${title} - visuel principal`}
+              src={images[0]}
+              fill
+              className="h-80 w-full"
+              imageClassName="object-cover object-center"
+              sizes="(min-width: 1280px) 66vw, (min-width: 768px) 50vw, 100vw"
+            />
           </div>
         </div>
         {/* Block 2: hidden on base, visible md (1/3) and lg (2/6) */}
         <div className="hidden p-px md:flex md:col-span-1 lg:col-span-2">
           <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm outline outline-black/5 lg:rounded-tr-4xl dark:bg-gray-800 dark:shadow-none dark:outline-white/15">
-            <img alt="" src={images[1] || images[0] || "/images/placeholder.jpg"} className="h-80 w-full object-cover object-center" />
+            <ResponsiveImage
+              alt={`${title} - visuel secondaire`}
+              src={images[1] || images[0]}
+              fill
+              className="h-80 w-full"
+              imageClassName="object-cover object-center"
+              sizes="(min-width: 1280px) 33vw, (min-width: 768px) 25vw, 100vw"
+            />
           </div>
         </div>
         {/* Block 3: only visible on lg (2/6) */}
         <div className="hidden p-px lg:flex lg:col-span-2">
           <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm outline outline-black/5 lg:rounded-bl-4xl dark:bg-gray-800 dark:shadow-none dark:outline-white/15">
-            <img alt="" src={images[2] || images[0] || "/images/placeholder.jpg"} className="h-80 w-full object-cover object-center" />
+            <ResponsiveImage
+              alt={`${title} - visuel galerie`}
+              src={images[2] || images[0]}
+              fill
+              className="h-80 w-full"
+              imageClassName="object-cover object-center"
+              sizes="(min-width: 1280px) 33vw, (min-width: 768px) 25vw, 100vw"
+            />
           </div>
         </div>
         {/* Block 4: only visible on lg (4/6) */}
         <div className="hidden p-px lg:flex lg:col-span-4">
           <div className="w-full overflow-hidden rounded-lg bg-white shadow-sm outline outline-black/5 max-lg:rounded-b-4xl lg:rounded-br-4xl dark:bg-gray-800 dark:shadow-none dark:outline-white/15">
-            <img alt="" src={images[3] || images[1] || "/images/placeholder.jpg"} className="h-80 w-full object-cover object-center" />
+            <ResponsiveImage
+              alt={`${title} - visuel additionnel`}
+              src={images[3] || images[1] || images[0]}
+              fill
+              className="h-80 w-full"
+              imageClassName="object-cover object-center"
+              sizes="(min-width: 1280px) 66vw, (min-width: 768px) 50vw, 100vw"
+            />
           </div>
         </div>
       </div>
