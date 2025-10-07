@@ -4,7 +4,7 @@
  * Shared header and two-column layout (sidebar nav + content) for settings pages.
  */
 
-import React, { useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   AppWindow,
   Bell,
@@ -67,7 +67,10 @@ const SettingsLayout = ({ children }) => {
                   {/* Mobile horizontal scroller with snap */}
                   <div
                     ref={scrollRef}
-                    className="flex lg:block space-x-2 lg:space-x-0 overflow-x-auto lg:overflow-visible whitespace-nowrap scrollbar-hide snap-x snap-mandatory px-4 -mx-4"
+                    className={[
+                      "flex lg:block space-x-2 lg:space-x-0 overflow-x-auto lg:overflow-visible",
+                      "whitespace-nowrap scrollbar-hide snap-x snap-mandatory px-4 -mx-4",
+                    ].join(" ")}
                   >
                     <SidebarNav
                       items={sidebarNavItems}

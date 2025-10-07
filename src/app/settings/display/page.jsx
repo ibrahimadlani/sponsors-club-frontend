@@ -4,8 +4,8 @@
  * Toggles visibility of optional UI elements.
  */
 
-import { Separator } from "@/components/ui/separator"
-import { DisplayForm } from "@/components/forms/display-form"
+import { Separator } from "@/components/ui/separator";
+import { DisplayForm } from "@/components/forms/display-form";
 
 export default function SettingsDisplayPage() {
   return (
@@ -19,5 +19,5 @@ export default function SettingsDisplayPage() {
       <Separator />
       <DisplayForm />
     </div>
-  )
+  );
 }

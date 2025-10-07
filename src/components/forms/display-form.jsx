@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -16,6 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { loadSettings, persistSettings } from "@/lib/settings-storage";
+
+const STORAGE_SCOPE = "display";
 
 const items = [
   { id: "recents", label: "Recents" },
@@ -27,32 +31,38 @@ const items = [
 ];
 
 const displayFormSchema = z.object({
-  items: z.array(z.string()).refine((value) => value.some((item) => item), {
-    message: "You have to select at least one item.",
-  }),
+  items: z
+    .array(z.string())
+    .min(1, { message: "You have to select at least one item." }),
 });
 
-// Valeurs par défaut pouvant provenir d'une API ou de votre base de données
 const defaultValues = {
   items: ["recents", "home"],
 };
 
-export function DisplayForm() {
+export function DisplayForm({ userId }) {
   const form = useForm({
     resolver: zodResolver(displayFormSchema),
     defaultValues,
   });
+  const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(data) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
-  }
+  useEffect(() => {
+    const stored = loadSettings(STORAGE_SCOPE, defaultValues, userId);
+    form.reset(stored);
+  }, [form, userId]);
+
+  const onSubmit = async (data) => {
+    setSubmitting(true);
+    try {
+      persistSettings(STORAGE_SCOPE, data, userId);
+      toast.success("Affichage mis à jour.");
+    } catch (error) {
+      toast.error("Impossible d'enregistrer votre configuration d'affichage.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -73,36 +83,34 @@ export function DisplayForm() {
                   key={item.id}
                   control={form.control}
                   name="items"
-                  render={({ field }) => {
-                    return (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value?.includes(item.id)}
-                            onCheckedChange={(checked) => {
-                              return checked
-                                ? field.onChange([...field.value, item.id])
-                                : field.onChange(
-                                    field.value?.filter(
-                                      (value) => value !== item.id
-                                    )
-                                  );
-                            }}
-                          />
-                        </FormControl>
-                        <FormLabel className="font-normal">
-                          {item.label}
-                        </FormLabel>
-                      </FormItem>
-                    );
-                  }}
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value?.includes(item.id)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              field.onChange([...(field.value ?? []), item.id]);
+                            } else {
+                              field.onChange(
+                                (field.value ?? []).filter((value) => value !== item.id),
+                              );
+                            }
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal">{item.label}</FormLabel>
+                    </FormItem>
+                  )}
                 />
               ))}
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">Update display</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Enregistrement..." : "Mettre à jour"}
+        </Button>
       </form>
     </Form>
   );

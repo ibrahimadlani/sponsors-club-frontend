@@ -67,7 +67,7 @@ export function OnboardingForm({ className, ...props }) {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await updateProfile(user?.id, data);
+      await updateProfile(data);
       toast.success("Votre profil a été mis à jour !");
       router.push("/"); // Redirection après la mise à jour
     } catch (error) {

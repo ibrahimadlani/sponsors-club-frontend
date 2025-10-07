@@ -87,7 +87,7 @@ export function ProfileForm() {
         // Le backend vérifiera l'adresse via Google et mettra à jour Address si reconnue
         ...(data.raw_address ? { raw_address: data.raw_address } : {}),
       };
-      await updateProfile(undefined, payload);
+      await updateProfile(payload);
       // Rafraîchir l'adresse vérifiée
       const updated = await fetchUserProfile();
       setAddressText(updated.address || "");

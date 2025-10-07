@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { ChevronDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useTheme } from "next-themes";
 
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -18,6 +19,9 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { loadSettings, persistSettings } from "@/lib/settings-storage";
+
+const STORAGE_SCOPE = "appearance";
 
 const appearanceFormSchema = z.object({
   theme: z.enum(["light", "dark"], {
@@ -29,27 +33,52 @@ const appearanceFormSchema = z.object({
   }),
 });
 
-// Valeurs par défaut (par exemple issues d'une base de données ou d'une API)
 const defaultValues = {
   theme: "light",
+  font: "inter",
 };
 
-export function AppearanceForm() {
+const FONT_STACKS = {
+  inter: 'var(--font-inter, "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)',
+  manrope: 'var(--font-manrope, "Manrope", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif)',
+  system: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
+const applyFontPreference = (font) => {
+  if (typeof window === "undefined") return;
+  const stack = FONT_STACKS[font] ?? FONT_STACKS.system;
+  document.documentElement.style.setProperty("--sc-dashboard-font", stack);
+  document.body.style.fontFamily = stack;
+};
+
+export function AppearanceForm({ userId }) {
   const form = useForm({
     resolver: zodResolver(appearanceFormSchema),
     defaultValues,
   });
+  const { setTheme } = useTheme();
+  const [submitting, setSubmitting] = useState(false);
 
-  function onSubmit(data) {
-    toast({
-      title: "You submitted the following values:",
-      description: (
-        <pre className="mt-2 w-[340px] rounded-md bg-slate-950 p-4">
-          <code className="text-white">{JSON.stringify(data, null, 2)}</code>
-        </pre>
-      ),
-    });
-  }
+  useEffect(() => {
+    const stored = loadSettings(STORAGE_SCOPE, defaultValues, userId);
+    form.reset(stored);
+    setTheme(stored.theme);
+    applyFontPreference(stored.font);
+  }, [form, userId, setTheme]);
+
+  const onSubmit = async (data) => {
+    setSubmitting(true);
+    try {
+      persistSettings(STORAGE_SCOPE, data, userId);
+      setTheme(data.theme);
+      applyFontPreference(data.font);
+      toast.success("Apparence mise à jour.");
+    } catch (error) {
+      toast.error("Impossible d'enregistrer vos préférences d'apparence.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <Form {...form}>
@@ -63,18 +92,34 @@ export function AppearanceForm() {
               <div className="relative w-max">
                 <FormControl>
                   <select
+                    {...field}
+                    onChange={(event) => {
+                      const newFont = event.target.value;
+                      field.onChange(newFont);
+                      applyFontPreference(newFont);
+                    }}
                     className={cn(
                       buttonVariants({ variant: "outline" }),
-                      "w-[200px] appearance-none font-normal"
+                      "w-[200px] appearance-none font-normal",
                     )}
-                    {...field}
                   >
                     <option value="inter">Inter</option>
                     <option value="manrope">Manrope</option>
                     <option value="system">System</option>
                   </select>
                 </FormControl>
-                <ChevronDown className="absolute right-3 top-2.5 h-4 w-4 opacity-50" />
+                <svg
+                  className="pointer-events-none absolute right-3 top-2.5 h-4 w-4 opacity-50"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polyline points="6 9 12 15 18 9" />
+                </svg>
               </div>
               <FormDescription>
                 Set the font you want to use in the dashboard.
@@ -94,8 +139,11 @@ export function AppearanceForm() {
               </FormDescription>
               <FormMessage />
               <RadioGroup
-                onValueChange={field.onChange}
-                defaultValue={field.value}
+                value={field.value}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  setTheme(value);
+                }}
                 className="grid max-w-md grid-cols-2 gap-8 pt-2"
               >
                 <FormItem>
@@ -154,7 +202,9 @@ export function AppearanceForm() {
             </FormItem>
           )}
         />
-        <Button type="submit">Update preferences</Button>
+        <Button type="submit" disabled={submitting}>
+          {submitting ? "Enregistrement..." : "Mettre à jour"}
+        </Button>
       </form>
     </Form>
   );

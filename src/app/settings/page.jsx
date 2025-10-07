@@ -3,10 +3,10 @@
  * Settings > Profile
  * Basic profile information form within the Settings layout.
  */
-import { Separator } from "@/components/ui/separator"
-import { ProfileForm } from "@/components/forms/profile-form"
-import ChangePasswordForm from "@/components/forms/change-password-form"
-import DeleteAccount from "@/components/forms/delete-account"
+import { Separator } from "@/components/ui/separator";
+import { ProfileForm } from "@/components/forms/profile-form";
+import ChangePasswordForm from "@/components/forms/change-password-form";
+import DeleteAccount from "@/components/forms/delete-account";
 
 export default function SettingsProfilePage() {
   return (
@@ -31,5 +31,5 @@ export default function SettingsProfilePage() {
         <DeleteAccount />
       </div>
     </div>
-  )
+  );
 }
