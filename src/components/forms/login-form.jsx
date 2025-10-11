@@ -70,18 +70,30 @@ export function LoginFormContent({ className, ...props }) {
       persistAuthTokens(tokens?.access, tokens?.refresh);
 
       let profileMessage = "Connexion réussie !";
+      let userRole = null;
       try {
         const profile = await userEndpoints.me();
         if (profile?.first_name) {
           profileMessage = `Bienvenue ${profile.first_name} !`;
         }
+        // Déterminer le rôle pour la redirection
+        userRole = profile?.account_type || profile?.role;
       } catch (profileError) {
         console.warn("Unable to fetch user profile after login", profileError);
       }
 
       toast.success(profileMessage);
       const nextParam = searchParams.get("next");
-      const redirectPath = nextParam && nextParam.startsWith("/") ? nextParam : "/";
+      
+      // Déterminer la redirection par défaut selon le rôle
+      let defaultPath = "/";
+      if (userRole === "AGENT") {
+        defaultPath = "/dashboard";
+      } else if (userRole === "COLLABORATOR") {
+        defaultPath = "/athletes";
+      }
+      
+      const redirectPath = nextParam && nextParam.startsWith("/") ? nextParam : defaultPath;
       router.push(redirectPath);
     } catch (error) {
       // Montre le message précis renvoyé par l'API (detail/error/message) sinon fallback FR

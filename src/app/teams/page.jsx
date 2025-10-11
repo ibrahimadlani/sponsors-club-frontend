@@ -10,7 +10,7 @@
 import { useState, useEffect } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import PageHeader from "@/components/page-header";
+import AppHeader from "@/components/app-header";
 import ItemsGrid from "@/components/items-grid";
 
 
@@ -122,7 +122,7 @@ export default function TeamsPage() {
     <SidebarProvider>
       <SidebarInset className="min-h-screen flex flex-col">
         {/* Shared app header */}
-        <PageHeader user={user} />
+        <AppHeader />
 
         {/* Main content: grid of team cards */}
         <div className="flex flex-1 flex-col gap-4 px-6 md:px-12 2xl:px-24 py-3">

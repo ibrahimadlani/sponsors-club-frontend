@@ -29,7 +29,6 @@ import {
 
 import { useRouter } from "next/navigation"; // Next.js router for redirection
 import { useTheme } from "next-themes"; // Hook to manage theme (light/dark)
-import { logout, fetchUserProfile } from "@/lib/api";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import Link from "next/link";
@@ -42,13 +41,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  useSidebar,
-} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import { LanguageCurrencyModal } from "@/components/language-currency-modal";
+import { getNavByRole, getUserRole } from "@/config/navigation";
+import { users, logout } from "@/lib/api";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useAgentNavigation } from "@/hooks/useAgentNavigation";
+import { Badge } from "@/components/ui/badge";
+
+// Hook pour utiliser sidebar de manière sécurisée
+const useSidebarSafe = () => {
+  try {
+    return useSidebar();
+  } catch (error) {
+    // Si useSidebar échoue, retourner des valeurs par défaut
+    return { isMobile: false };
+  }
+};
 
 const formatDate = (value, options) => {
   if (!value) return null;
@@ -69,12 +78,18 @@ const formatDate = (value, options) => {
  * @returns {JSX.Element} The rendered NavUser component.
  */
 export function NavUser({ user: userProp = null }) {
-  const { isMobile } = useSidebar();
+  const { isMobile } = useSidebarSafe();
   const router = useRouter(); // For navigation
   const { theme, setTheme } = useTheme();
   const [isLanguageCurrencyModalOpen, setIsLanguageCurrencyModalOpen] = useState(false);
   const [user, setUser] = useState(userProp);
   const [loadingProfile, setLoadingProfile] = useState(!userProp);
+  
+  // Get role directly from JWT
+  const { role: userRole } = useUserRole();
+  
+  // Get navigation adapted for agents (single athlete redirect)
+  const { navItems: agentNavItems } = useAgentNavigation();
 
   useEffect(() => {
     if (userProp) {
@@ -88,7 +103,7 @@ export function NavUser({ user: userProp = null }) {
     const loadProfile = async () => {
       setLoadingProfile(true);
       try {
-        const profile = await fetchUserProfile();
+        const profile = await users.getMe();
         if (isMounted) {
           setUser(profile);
         }
@@ -123,12 +138,19 @@ export function NavUser({ user: userProp = null }) {
   if (!initials) {
     initials = user?.email?.charAt(0)?.toUpperCase() || "U";
   }
-  const accountTypeLabel =
-    user?.account_type === "AGENT"
-      ? "Agent"
-      : user?.account_type === "COLLABORATOR"
-      ? "Collaborateur"
-      : user?.account_type || null;
+  
+  // Format role label for display
+  const roleLabel = userRole === "AGENT" 
+    ? "Agent" 
+    : userRole === "COLLABORATOR" 
+    ? "Collaborateur" 
+    : "Utilisateur";
+  
+  // Role badge variant (for styled display)
+  const roleBadgeVariant = userRole === "AGENT" 
+    ? "default" 
+    : "secondary";
+  
   const emailStatusLabel = user?.email_verified ? "Email vérifié" : null;
   const isAuthenticated = Boolean(user);
   const isLoadingProfile = loadingProfile;
@@ -148,55 +170,32 @@ export function NavUser({ user: userProp = null }) {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // Schéma des menus par rôle
-  const menuSchemas = {
-    AGENT: [
-      { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-      { label: 'Profile', href: '/athletes', icon: User },
-      { label: 'Athlètes', href: '/athletes', icon: Heart },
-      { label: 'Collaborations', href: null, icon: Handshake },
-      { label: 'Profile', href: null, icon: User },
-    ],
-    COLLABORATOR: [
-      { label: 'Athlètes', href: '/athletes', icon: BicepsFlexed },
-      { label: 'Suivis', href: '/follows', icon: HeartIcon },
-      { label: 'Collabs', href: '/collaborations', icon: Handshake },
-      { label: 'Analytics', href: '/analytics', icon: ChartNoAxesCombined },
-    ],
-    ADMIN: [
-      { label: 'Dashboard Admin', href: '/admin/dashboard', icon: Sparkles },
-      { label: 'Explorer', href: '/explore', icon: Search },
-      { label: 'Profile', href: null, icon: User },
-    ],
-  };
-
-  // Génère le menu à partir du schéma
+  /**
+   * Génère le menu à partir du schéma de navigation centralisé
+   * Utilise le même rôle que la NavBar (depuis useUserRole hook)
+   * Affiche les mêmes items que dans la NavBar
+   * Pour les agents, adapte automatiquement le lien "Mes Athlètes" si un seul athlète
+   */
   const RoleMenu = () => {
-    const type = user?.account_type || 'AGENT';
-    const items = menuSchemas[type] || menuSchemas['AGENT'];
+    // Utilise la navigation adaptée pour les agents (gère le cas d'un seul athlète)
+    const items = userRole === "AGENT" ? agentNavItems : getNavByRole(userRole);
+    
     return (
-      <DropdownMenuGroup className="hidden md:block">
-        {items.map((item, idx) =>
-          item.href ? (
-            <Link href={item.href} passHref className="font-semibold" key={item.label}>
-              <DropdownMenuItem>
-                <item.icon className="mr-2 h-4 w-4" />
-                {item.label}
-              </DropdownMenuItem>
-            </Link>
-          ) : (
-            <DropdownMenuItem className="font-semibold" key={item.label}>
+      <DropdownMenuGroup>
+        {items.map((item) => (
+          <Link href={item.href} passHref className="font-semibold" key={item.label}>
+            <DropdownMenuItem>
               <item.icon className="mr-2 h-4 w-4" />
               {item.label}
             </DropdownMenuItem>
-          )
-        )}
+          </Link>
+        ))}
       </DropdownMenuGroup>
     );
   };
 
   return (
-    <SidebarMenu className="flex justify-end flex-row items-center gap-3 d-none">
+    <div className="flex justify-end flex-row items-center gap-3">
       {/* Call to Action link */}
 
       <Link href="/notifications" passHref legacyBehavior>
@@ -212,12 +211,13 @@ export function NavUser({ user: userProp = null }) {
         </a>
       </Link>
 
-      <SidebarMenuItem className="relative">
+      <div className="relative">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="relative data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground !ring-0 flex !hover:bg-transparent !bg-transparent hover:!bg-transparent"
+            <Button
+              variant="ghost"
+              size="sm"
+              className="relative !ring-0 flex !hover:bg-transparent !bg-transparent hover:!bg-transparent p-0"
             >
               <div className="flex items-center gap-1.5 rounded-lg border border-black/10 dark:border-white/10 px-1.5 py-1 transition-colors hover:bg-muted/60 dark:hover:bg-muted/80">
                 {/* Hamburger icon next to avatar */}
@@ -237,7 +237,7 @@ export function NavUser({ user: userProp = null }) {
                     <></>
                 )}
               </div>
-            </SidebarMenuButton>
+            </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent
             className="absolute right-0 top-2 w-56 min-w-56 rounded-lg shadow-lg z-50 bg-background border border-border"
@@ -257,11 +257,16 @@ export function NavUser({ user: userProp = null }) {
                         {initials || "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="grid flex-1 text-left text-sm leading-tight gap-0.5">
+                    <div className="grid flex-1 text-left text-sm leading-tight gap-1">
                       <span className="truncate font-semibold">
                         {displayName}
                       </span>
-                      <span className="truncate text-xs text-muted-foreground">{user.email}</span>
+                      <Badge 
+                        variant={roleBadgeVariant} 
+                        className="w-fit text-[10px] px-1.5 py-0 h-5 font-medium"
+                      >
+                        {roleLabel}
+                      </Badge>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -276,9 +281,9 @@ export function NavUser({ user: userProp = null }) {
                     </span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
-                <DropdownMenuSeparator className="hidden md:block"/>
+                <DropdownMenuSeparator />
 
-                {/* Navigation Options selon le rôle */}
+                {/* Navigation Options selon le rôle - Mêmes items que dans la NavBar */}
                 <RoleMenu />
                 <DropdownMenuSeparator />
 
@@ -376,13 +381,13 @@ export function NavUser({ user: userProp = null }) {
             )}
           </DropdownMenuContent>
         </DropdownMenu>
-      </SidebarMenuItem>
+      </div>
 
       {/* Language and Currency Modal */}
       <LanguageCurrencyModal 
         open={isLanguageCurrencyModalOpen} 
         onOpenChange={setIsLanguageCurrencyModalOpen} 
       />
-    </SidebarMenu>
+    </div>
   );
 }

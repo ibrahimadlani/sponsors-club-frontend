@@ -1,6 +1,6 @@
 
 // Prefer env override if provided, fallback to API docs host
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8000/api";
 
 const ACCESS_COOKIE = "accessToken";
 const REFRESH_COOKIE = "refreshToken";
@@ -49,6 +49,61 @@ const deleteCookie = (name) => {
   document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
 };
 
+const getCookie = (name) => {
+  if (!isBrowser()) return null;
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop().split(';').shift();
+  return null;
+};
+
+/**
+ * Get current user data from JWT token
+ * Returns user data directly from the JWT without API call
+ */
+export const getUserFromToken = () => {
+  if (!isBrowser()) return null;
+  const token = getCookie(ACCESS_COOKIE) || localStorage.getItem("accessToken");
+  if (!token) return null;
+  return parseJwt(token);
+};
+
+/**
+ * Get user role directly from JWT token
+ * Returns the role string (AGENT or COLLABORATOR) or null if not authenticated
+ * 
+ * @returns {string|null} User role from JWT or null
+ * 
+ * @example
+ * const role = getUserRole();
+ * if (role === "AGENT") {
+ *   // Show agent-specific content
+ * } else if (role === "COLLABORATOR") {
+ *   // Show collaborator-specific content
+ * }
+ */
+export const getUserRole = () => {
+  const tokenData = getUserFromToken();
+  if (!tokenData) return null;
+  
+  // Return role directly from JWT (AGENT or COLLABORATOR)
+  return tokenData.role || null;
+};
+
+/**
+ * Check if user is a self-represented agent from JWT token
+ * Returns true if the agent represents themselves (is_self_represented = true)
+ * 
+ * @returns {boolean} True if self-represented, false otherwise
+ */
+export const isSelfRepresented = () => {
+  const tokenData = getUserFromToken();
+  if (!tokenData) return false;
+  
+  // Check if is_self_represented field exists in JWT
+  return tokenData.is_self_represented === true || tokenData.isSelfRepresented === true;
+};
+
 export const persistAuthTokens = (accessToken, refreshToken) => {
   if (!isBrowser()) return;
   try {
@@ -80,7 +135,7 @@ export const clearAuthTokens = () => {
 
 // 🔹 Reset Password Request
 export const resetPassword = async (email) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/`, {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -97,7 +152,7 @@ export const resetPassword = async (email) => {
 
 // 🔹 Confirm Password Reset
 export const confirmPasswordReset = async (token, newPassword) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/reset-password/confirm/`, {
+  const res = await fetch(`${API_BASE_URL}/auth/reset-password/confirm/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -112,7 +167,7 @@ export const confirmPasswordReset = async (token, newPassword) => {
 
 // 🔹 Register a new user
 export const registerUser = async (userData) => {
-  const res = await fetch(`${API_BASE_URL}/api/users/register/`, {
+  const res = await fetch(`${API_BASE_URL}/users/register/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -130,7 +185,7 @@ export const registerUser = async (userData) => {
 
 // 🔹 Verify Email
 export const verifyEmail = async (token) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/verify-email/`, {
+  const res = await fetch(`${API_BASE_URL}/auth/verify-email/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ token }),
@@ -158,7 +213,7 @@ const withAuthIfAvailable = () => {
 };
 
 export const getAthletes = async () => {
-  const res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+  const res = await fetch(`${API_BASE_URL}/athletes/`, {
     cache: "no-store",
     headers: { ...withAuthIfAvailable() },
   });
@@ -178,7 +233,7 @@ export const getAthleteBySlug = async (identifier) => {
   const isUuid = /[0-9a-fA-F-]{36}/.test(candidate);
 
   const fetchById = async (id) => {
-    const res = await fetch(`${API_BASE_URL}/api/athletes/${id}/`, {
+    const res = await fetch(`${API_BASE_URL}/athletes/${id}/`, {
       cache: "no-store",
       headers: { ...withAuthIfAvailable() },
     });
@@ -197,10 +252,27 @@ export const getAthleteBySlug = async (identifier) => {
 
   const slug = candidate.toLowerCase();
 
-  // Try a direct lookup via list filtering ?slug=<value>
+  // Try a direct lookup via slug endpoint: /athletes/slug/{slug}
   try {
     const res = await fetch(
-      `${API_BASE_URL}/api/athletes/?slug=${encodeURIComponent(slug)}`,
+      `${API_BASE_URL}/athletes/slug/${encodeURIComponent(slug)}/`,
+      {
+        cache: "no-store",
+        headers: { ...withAuthIfAvailable() },
+      },
+    );
+    if (res.ok) {
+      const athlete = await res.json().catch(() => null);
+      if (athlete) return athlete;
+    }
+  } catch (error) {
+    console.warn("Unable to fetch athlete by slug endpoint", error);
+  }
+
+  // Fallback: try query parameter ?slug=<value>
+  try {
+    const res = await fetch(
+      `${API_BASE_URL}/athletes/?slug=${encodeURIComponent(slug)}`,
       {
         cache: "no-store",
         headers: { ...withAuthIfAvailable() },
@@ -217,7 +289,7 @@ export const getAthleteBySlug = async (identifier) => {
       }
     }
   } catch (error) {
-    console.warn("Unable to fetch athlete by slug", error);
+    console.warn("Unable to fetch athlete by slug query parameter", error);
   }
 
   // Fallback: fetch list and attempt to resolve by slug/profile_url/id
@@ -243,7 +315,7 @@ export const getAthleteBySlug = async (identifier) => {
 };
 
 export const getAthletesPage = async (limit = 12, offset = 0) => {
-  const url = `${API_BASE_URL}/api/athletes/?limit=${limit}&offset=${offset}`;
+  const url = `${API_BASE_URL}/athletes/?limit=${limit}&offset=${offset}`;
   let headers = {};
   // Ajoute le header Authorization si token dispo
   if (typeof window !== "undefined") {
@@ -261,7 +333,7 @@ export const getAthletesPage = async (limit = 12, offset = 0) => {
 };
 
 export const login = async (email, password) => {
-  const res = await fetch(`${API_BASE_URL}/api/users/login/`, {
+  const res = await fetch(`${API_BASE_URL}/users/login/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -296,7 +368,7 @@ export const refreshAccessToken = async () => {
   const refreshToken = localStorage.getItem("refreshToken");
   if (!refreshToken) throw new Error("No refresh token available");
 
-  const res = await fetch(`${API_BASE_URL}/api/users/refresh/`, {
+  const res = await fetch(`${API_BASE_URL}/users/refresh/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -311,6 +383,113 @@ export const refreshAccessToken = async () => {
   const data = await res.json();
   persistAuthTokens(data.access, refreshToken);
   return data.access;
+};
+
+// Variable pour éviter les rafraîchissements multiples simultanés
+let refreshTokenPromise = null;
+
+/**
+ * Wrapper pour fetch avec gestion automatique du rafraîchissement de token
+ * Détecte les erreurs 403 avec token expiré et rafraîchit automatiquement
+ * 
+ * @param {string} url - URL de la requête
+ * @param {object} options - Options fetch
+ * @returns {Promise<Response>} Response de la requête
+ */
+export const fetchWithTokenRefresh = async (url, options = {}) => {
+  // Première tentative
+  let response = await fetch(url, options);
+  
+  // Si 403 ou 401, vérifier si c'est un problème de token expiré
+  if ((response.status === 403 || response.status === 401) && !url.includes('/refresh/') && !url.includes('/login/')) {
+    try {
+      const errorData = await response.clone().json().catch(() => ({}));
+      
+      // Vérifier si c'est bien un token expiré
+      const isTokenExpired = 
+        errorData?.code === "token_not_valid" ||
+        errorData?.detail?.includes("token") ||
+        errorData?.detail?.includes("Token is expired") ||
+        errorData?.messages?.some(m => m?.message?.includes("expired"));
+      
+      if (isTokenExpired) {
+        console.log("Token expiré détecté, rafraîchissement automatique...");
+        
+        // Si un rafraîchissement est déjà en cours, attendre sa résolution
+        if (!refreshTokenPromise) {
+          refreshTokenPromise = refreshAccessToken()
+            .then(newToken => {
+              refreshTokenPromise = null;
+              return newToken;
+            })
+            .catch(error => {
+              refreshTokenPromise = null;
+              // Si le refresh échoue, déconnecter l'utilisateur
+              clearAuthTokens();
+              window.location.href = "/login?expired=1&redirected=true";
+              throw error;
+            });
+        }
+        
+        // Attendre le nouveau token
+        const newToken = await refreshTokenPromise;
+        
+        // Mettre à jour les headers avec le nouveau token
+        const newOptions = {
+          ...options,
+          headers: {
+            ...options.headers,
+            Authorization: `Bearer ${newToken}`,
+          },
+        };
+        
+        // Réessayer la requête avec le nouveau token
+        console.log("Nouvelle tentative avec token rafraîchi");
+        response = await fetch(url, newOptions);
+      }
+    } catch (error) {
+      console.error("Erreur lors du rafraîchissement du token:", error);
+      // Si erreur lors du parse ou du refresh, retourner la réponse originale
+      return response;
+    }
+  }
+  
+  return response;
+};
+
+/**
+ * Helper function for authenticated requests with automatic token refresh
+ * Simplifies making authenticated API calls
+ * 
+ * @param {string} path - API endpoint path
+ * @param {object} options - Request options (method, body, etc.)
+ * @returns {Promise<any>} Parsed JSON response
+ */
+export const authenticatedFetch = async (path, { method = "GET", body } = {}) => {
+  const token = localStorage.getItem("accessToken");
+  if (!token) throw new Error("User not authenticated");
+
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (!res.ok) {
+    let msg = `Request failed with status ${res.status}`;
+    try { 
+      const errorData = await res.json(); 
+      msg = errorData?.message || errorData?.detail || msg;
+    } catch {}
+    const error = new Error(msg);
+    error.status = res.status;
+    throw error;
+  }
+
+  return res.json();
 };
 
 // 🔹 Logout User
@@ -342,26 +521,21 @@ const authedRequest = async (path, { method = "GET", body } = {}) => {
   const token = getStoredAccessToken();
   if (!token) throw new Error("Utilisateur non authentifié");
 
-  const execute = async (accessToken) =>
-    fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+  // Utiliser fetchWithTokenRefresh pour gérer automatiquement le rafraîchissement
+  const response = await fetchWithTokenRefresh(`${API_BASE_URL}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
 
-  let response = await execute(token);
-  if (response.status === 401) {
-    const refreshedToken = await refreshAccessToken();
-    response = await execute(refreshedToken);
-  }
   return response;
 };
 
 export const fetchUserProfile = async () => {
-  const response = await authedRequest("/api/users/me/");
+  const response = await authedRequest("/users/me/");
   if (!response.ok) throw new Error("Failed to fetch user profile");
   return response.json();
 };
@@ -390,7 +564,7 @@ export const updateProfile = async (data) => {
 
 // 🔹 Request Password Reset
 export const requestPasswordReset = async (email) => {
-  const res = await fetch(`${API_BASE_URL}/api/auth/password/reset/`, {
+  const res = await fetch(`${API_BASE_URL}/auth/password/reset/`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -405,10 +579,10 @@ export const requestPasswordReset = async (email) => {
 
 // 🔹 Change Password
 export const changePassword = async (oldPassword, newPassword, confirmNewPassword) => {
-  let token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/auth/change-password/`, {
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}/auth/change-password/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -421,49 +595,22 @@ export const changePassword = async (oldPassword, newPassword, confirmNewPasswor
     }),
   });
 
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/auth/change-password/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        old_password: oldPassword,
-        new_password: newPassword,
-        confirm_new_password: confirmNewPassword ?? newPassword,
-      }),
-    });
-  }
-
   if (!res.ok) throw new Error("Password change failed");
   return res.json();
 };
 
 // 🔹 Delete account (Right to erasure)
 export const deleteAccount = async () => {
-  let token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/privacy/erase/`, {
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}/privacy/erase/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
   });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/privacy/erase/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  }
 
   if (!res.ok) {
     let msg = "Failed to delete account";
@@ -478,10 +625,10 @@ export const deleteAccount = async () => {
 
 // Get all organisations
 export const fetchOrganisations = async () => {
-  let token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/`, {
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}/organisations/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -489,27 +636,16 @@ export const fetchOrganisations = async () => {
     },
   });
 
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  }
-
   if (!res.ok) throw new Error("Failed to fetch organisations");
   return res.json();
 };
 
 // Create a new organisation
 export const createOrganisation = async (organisationData) => {
-  let token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/`, {
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}/organisations/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -517,18 +653,6 @@ export const createOrganisation = async (organisationData) => {
     },
     body: JSON.stringify(organisationData),
   });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(organisationData),
-    });
-  }
 
   if (!res.ok) {
     let msg = "Failed to create organisation";
@@ -544,10 +668,10 @@ export const createOrganisation = async (organisationData) => {
 
 // Join an organisation with invitation code
 export const joinOrganisation = async (invitationCode) => {
-  let token = localStorage.getItem("accessToken");
+  const token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/join/`, {
+  const res = await fetchWithTokenRefresh(`${API_BASE_URL}/organisations/join/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -555,18 +679,6 @@ export const joinOrganisation = async (invitationCode) => {
     },
     body: JSON.stringify({ invitation_code: invitationCode }),
   });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/join/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ invitation_code: invitationCode }),
-    });
-  }
 
   if (!res.ok) {
     let msg = "Failed to join organisation";
@@ -582,60 +694,15 @@ export const joinOrganisation = async (invitationCode) => {
 
 // Get specific organisation details
 export const fetchOrganisation = async (organisationId) => {
-  let token = localStorage.getItem("accessToken");
-  if (!token) throw new Error("User not authenticated");
-
-  let res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/`, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-    });
-  }
-
-  if (!res.ok) throw new Error("Failed to fetch organisation");
-  return res.json();
+  return authenticatedFetch(`/organisations/${organisationId}/`);
 };
 
 // Update organisation
 export const updateOrganisation = async (organisationId, organisationData) => {
-  let token = localStorage.getItem("accessToken");
-  if (!token) throw new Error("User not authenticated");
-
-  let res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/`, {
+  return authenticatedFetch(`/organisations/${organisationId}/`, {
     method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(organisationData),
+    body: organisationData,
   });
-
-  if (res.status === 401) {
-    token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(organisationData),
-    });
-  }
-
-  if (!res.ok) throw new Error("Failed to update organisation");
-  return res.json();
 };
 
 // Get organisation collaborators
@@ -643,7 +710,7 @@ export const fetchOrganisationCollaborators = async (organisationId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/collaborators/`, {
+  let res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/collaborators/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -653,7 +720,7 @@ export const fetchOrganisationCollaborators = async (organisationId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/collaborators/`, {
+    res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/collaborators/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -671,7 +738,7 @@ export const fetchOrganisationInvites = async (organisationId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/invites/`, {
+  let res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/invites/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -681,7 +748,7 @@ export const fetchOrganisationInvites = async (organisationId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/invites/`, {
+    res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/invites/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -699,7 +766,7 @@ export const createOrganisationInvite = async (organisationId, inviteData = {}) 
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/invites/`, {
+  let res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/invites/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -710,7 +777,7 @@ export const createOrganisationInvite = async (organisationId, inviteData = {}) 
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/organisations/${organisationId}/invites/`, {
+    res = await fetch(`${API_BASE_URL}/organisations/${organisationId}/invites/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -731,7 +798,7 @@ export const fetchSports = async () => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/sports/`, {
+  let res = await fetch(`${API_BASE_URL}/sports/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -741,7 +808,7 @@ export const fetchSports = async () => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/sports/`, {
+    res = await fetch(`${API_BASE_URL}/sports/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -759,7 +826,7 @@ export const fetchSportDisciplines = async (sportId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/sports/${sportId}/disciplines/`, {
+  let res = await fetch(`${API_BASE_URL}/sports/${sportId}/disciplines/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -769,7 +836,7 @@ export const fetchSportDisciplines = async (sportId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/sports/${sportId}/disciplines/`, {
+    res = await fetch(`${API_BASE_URL}/sports/${sportId}/disciplines/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -789,7 +856,7 @@ export const fetchAthletes = async () => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -799,7 +866,7 @@ export const fetchAthletes = async () => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -817,7 +884,7 @@ export const createAthlete = async (athleteData) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -828,7 +895,7 @@ export const createAthlete = async (athleteData) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -855,7 +922,7 @@ export const fetchAthlete = async (athleteId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -865,7 +932,7 @@ export const fetchAthlete = async (athleteId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -883,7 +950,7 @@ export const updateAthlete = async (athleteId, athleteData) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -894,7 +961,7 @@ export const updateAthlete = async (athleteId, athleteData) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -913,7 +980,7 @@ export const deleteAthlete = async (athleteId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -923,7 +990,7 @@ export const deleteAthlete = async (athleteId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -938,10 +1005,15 @@ export const deleteAthlete = async (athleteId) => {
 
 // Get my athletes (for agents)
 export const fetchMyAthletes = async () => {
+  if (!isBrowser()) throw new Error("Not in browser context");
+  
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/me/athletes/`, {
+  const url = `${API_BASE_URL}/me/athletes/`;
+  console.log("[fetchMyAthletes] Fetching from:", url);
+
+  let res = await fetch(url, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -949,19 +1021,30 @@ export const fetchMyAthletes = async () => {
     },
   });
 
+  console.log("[fetchMyAthletes] Response status:", res.status);
+
   if (res.status === 401) {
+    console.log("[fetchMyAthletes] Token expired, refreshing...");
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/me/athletes/`, {
+    res = await fetch(url, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
     });
+    console.log("[fetchMyAthletes] Response status after refresh:", res.status);
   }
 
-  if (!res.ok) throw new Error("Failed to fetch my athletes");
-  return res.json();
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`[fetchMyAthletes] Failed (${res.status}):`, errorText);
+    throw new Error(`Failed to fetch my athletes: ${res.status} ${res.statusText}`);
+  }
+  
+  const data = await res.json();
+  console.log("[fetchMyAthletes] Success, received data:", data);
+  return data;
 };
 
 // Follow/unfollow athlete
@@ -969,7 +1052,7 @@ export const followAthlete = async (athleteId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/follow/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/follow/`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -979,7 +1062,7 @@ export const followAthlete = async (athleteId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/follow/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/follow/`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -996,7 +1079,7 @@ export const unfollowAthlete = async (athleteId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/follow/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/follow/`, {
     method: "DELETE",
     headers: {
       "Content-Type": "application/json",
@@ -1006,7 +1089,7 @@ export const unfollowAthlete = async (athleteId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/follow/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/follow/`, {
       method: "DELETE",
       headers: {
         "Content-Type": "application/json",
@@ -1024,7 +1107,7 @@ export const fetchAthletePhotos = async (athleteId) => {
   let token = localStorage.getItem("accessToken");
   if (!token) throw new Error("User not authenticated");
 
-  let res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/photos/`, {
+  let res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/photos/`, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -1034,7 +1117,7 @@ export const fetchAthletePhotos = async (athleteId) => {
 
   if (res.status === 401) {
     token = await refreshAccessToken();
-    res = await fetch(`${API_BASE_URL}/api/athletes/${athleteId}/photos/`, {
+    res = await fetch(`${API_BASE_URL}/athletes/${athleteId}/photos/`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -1045,4 +1128,112 @@ export const fetchAthletePhotos = async (athleteId) => {
 
   if (!res.ok) throw new Error("Failed to fetch athlete photos");
   return res.json();
+};
+
+// Payments API
+export const payments = {
+  getPlans: async () => {
+    // Endpoint public - ne nécessite pas d'authentification
+    const res = await fetch(`${API_BASE_URL}/payments/plans/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!res.ok) throw new Error("Failed to fetch plans");
+    return res.json();
+  },
+
+  getMySubscription: async () => {
+    let token = localStorage.getItem("accessToken");
+    if (!token) throw new Error("User not authenticated");
+
+    let res = await fetch(`${API_BASE_URL}/payments/subscriptions/me/`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 401) {
+      token = await refreshAccessToken();
+      res = await fetch(`${API_BASE_URL}/payments/subscriptions/me/`, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+
+    if (!res.ok) throw new Error("Failed to fetch subscription");
+    return res.json();
+  },
+
+  createCheckoutSession: async (planId) => {
+    let token = localStorage.getItem("accessToken");
+    if (!token) throw new Error("User not authenticated");
+
+    let res = await fetch(`${API_BASE_URL}/payments/stripe/checkout-session/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ plan_id: planId }),
+    });
+
+    if (res.status === 401) {
+      token = await refreshAccessToken();
+      res = await fetch(`${API_BASE_URL}/payments/stripe/checkout-session/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ plan_id: planId }),
+      });
+    }
+
+    if (!res.ok) throw new Error("Failed to create checkout session");
+    return res.json();
+  },
+
+  cancelMySubscription: async () => {
+    let token = localStorage.getItem("accessToken");
+    if (!token) throw new Error("User not authenticated");
+
+    let res = await fetch(`${API_BASE_URL}/payments/subscriptions/me/`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (res.status === 401) {
+      token = await refreshAccessToken();
+      res = await fetch(`${API_BASE_URL}/payments/subscriptions/me/`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
+
+    if (!res.ok) throw new Error("Failed to cancel subscription");
+    return res.status === 204;
+  },
+};
+
+/**
+ * Users API methods
+ * Provides methods for user profile operations
+ */
+export const users = {
+  getMe: fetchUserProfile,
+  updateMe: updateProfile,
 };

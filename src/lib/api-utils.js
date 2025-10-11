@@ -1,18 +1,12 @@
 // src/lib/api-utils.js
 // Fonctions utilitaires intermédiaires entre l'API Sponsors Club et le front
-import {
-  getAthleteBySlug,
-  followAthlete,
-  unfollowAthlete,
-  fetchAthletePhotos,
-  // Ajoutez ici d'autres fonctions API si besoin
-} from "./api";
+import { athletes } from "./api";
 
 /**
  * Récupère le profil public d'un athlète par son slug et normalise les données pour le front.
  */
 export async function fetchAthleteProfile(slug) {
-  const data = await getAthleteBySlug(slug);
+  const data = await athletes.getAthleteBySlug(slug);
   if (!data) return null;
   return {
     id: data.id,
@@ -41,7 +35,7 @@ export async function fetchAthleteProfile(slug) {
  */
 export async function followAthleteById(athleteId) {
   try {
-    await followAthlete(athleteId);
+    await athletes.followAthlete(athleteId);
     return true;
   } catch {
     return false;
@@ -53,7 +47,7 @@ export async function followAthleteById(athleteId) {
  */
 export async function unfollowAthleteById(athleteId) {
   try {
-    await unfollowAthlete(athleteId);
+    await athletes.unfollowAthlete(athleteId);
     return true;
   } catch {
     return false;
@@ -65,7 +59,7 @@ export async function unfollowAthleteById(athleteId) {
  */
 export async function fetchAthleteGallery(athleteId) {
   try {
-    return await fetchAthletePhotos(athleteId);
+    return await athletes.getAthletePhotos(athleteId);
   } catch {
     return [];
   }

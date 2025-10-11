@@ -1,254 +1,456 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, Building2, ArrowRight, Sparkles } from "lucide-react";
-import { motion } from "framer-motion";
-import Logo from "@/components/ui/logo";
+import { useState, useEffect } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useAgentNavigation } from "@/hooks/useAgentNavigation";
+import { SidebarInset } from "@/components/ui/sidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  BicepsFlexed,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  Heart,
+  MessageSquare,
+  FileText,
+  ChartNoAxesCombined,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Handshake,
+} from "lucide-react";
+import Link from "next/link";
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.6 }
-};
-
-export default function AgentDashboardPage() {
+export default function DashboardPage() {
+  const { role, isLoading: roleLoading } = useUserRole();
   const { user } = useCurrentUser();
-  const router = useRouter();
-  const [isVisible, setIsVisible] = useState(false);
-
-  const managementCards = [
-    {
-      title: "Gestion d'athlètes",
-      description: "Créez et gérez les profils de vos talents",
-      icon: Users,
-      iconStyles: {
-        container: "bg-blue-100",
-        icon: "text-blue-600"
-      },
-      stats: [
-        { label: "Athlètes actifs", value: "0" },
-        { label: "Profils complétés", value: "0%" }
-      ],
-      action: {
-        label: "Créer votre premier athlète",
-        href: "/onboarding/athlete",
-        icon: ArrowRight
-      }
-    },
-    {
-      title: "Opportunités",
-      description: "Trouvez des partenariats pour vos athlètes",
-      icon: Building2,
-      iconStyles: {
-        container: "bg-green-100",
-        icon: "text-green-600"
-      },
-      stats: [
-        { label: "Contrats actifs", value: "0" },
-        { label: "Revenus générés", value: "0 €" }
-      ],
-      action: {
-        label: "Rechercher des sponsors",
-        variant: "outline",
-        disabled: true,
-        note: "(Bientôt disponible)"
-      }
-    }
-  ];
-
-  const onboardingSteps = [
-    {
-      number: 1,
-      title: "Créez votre premier profil d'athlète",
-      description: "Commencez par ajouter les informations de base de votre athlète principal",
-      action: {
-        label: "Commencer",
-        href: "/onboarding/athlete",
-        icon: ArrowRight
-      }
-    },
-    {
-      number: 2,
-      title: "Complétez les profils",
-      description: "Ajoutez des photos, statistiques et informations détaillées",
-      status: "upcoming"
-    },
-    {
-      number: 3,
-      title: "Recherchez des partenaires",
-      description: "Utilisez notre plateforme pour trouver des opportunités de sponsoring",
-      status: "upcoming"
-    }
-  ];
+  const { navItems: agentNavItems, athletes } = useAgentNavigation();
+  const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    setIsVisible(true);
-    
-    // Rediriger si pas un agent
-    if (user && user.account_type === "COLLABORATOR") {
-      router.push("/explore");
-    }
-  }, [user, router]);
+    const loadStats = async () => {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      if (role === "AGENT") {
+        setStats({
+          athletes: 8,
+          activeContracts: 12,
+          totalRevenue: "€245,000",
+          pendingOffers: 5,
+          recentActivity: [
+            { id: 1, type: "contract", athlete: "Teddy Riner", action: "Nouveau contrat signé", date: "Il y a 2h", amount: "€50,000" },
+            { id: 2, type: "meeting", athlete: "Clarisse Agbegnenou", action: "Réunion programmée", date: "Demain 14h" },
+            { id: 3, type: "offer", athlete: "Romane Dicko", action: "Nouvelle offre reçue", date: "Il y a 1j", amount: "€35,000" },
+          ],
+          upcomingEvents: [
+            { id: 1, title: "Réunion avec Nike", date: "2025-10-12", time: "14:00" },
+            { id: 2, title: "Négociation contrat - Teddy", date: "2025-10-15", time: "10:00" },
+          ],
+        });
+      } else {
+        setStats({
+          followedAthletes: 24,
+          savedOpportunities: 8,
+          activeCollaborations: 3,
+          newAthletes: 15,
+          recentActivity: [
+            { id: 1, type: "follow", athlete: "Victor Wembanyama", action: "Nouvel athlète suivi", date: "Il y a 3h" },
+            { id: 2, type: "collab", organisation: "Adidas France", action: "Nouvelle opportunité de collaboration", date: "Il y a 5h" },
+            { id: 3, type: "update", athlete: "Kylian Mbappé", action: "Mise à jour du profil", date: "Il y a 1j" },
+          ],
+          trendingAthletes: [
+            { id: 1, name: "Leon Marchand", sport: "Natation", followers: "+2.5k" },
+            { id: 2, name: "Alexis Hanquinquant", sport: "Paratriathlon", followers: "+1.8k" },
+            { id: 3, name: "Estelle Mossely", sport: "Boxe", followers: "+1.2k" },
+          ],
+        });
+      }
+    };
 
-  if (!user) {
-    return null;
+    if (role) {
+      loadStats();
+    }
+  }, [role]);
+
+  if (roleLoading) {
+    return (
+      <SidebarInset className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement...</p>
+        </div>
+      </SidebarInset>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b bg-background/95 backdrop-blur">
-        <div className="container mx-auto flex h-16 items-center justify-between px-4">
-          <Logo />
-          <div className="flex items-center space-x-2">
-            <Button variant="ghost" asChild>
-              <Link href="/settings">Paramètres</Link>
+    <SidebarInset className="min-h-screen flex flex-col">
+      <div className="flex flex-1 flex-col gap-6 px-6 md:px-12 2xl:px-24 py-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Tableau de bord</h1>
+            <p className="text-muted-foreground mt-1">
+              {role === "AGENT" 
+                ? "Gérez vos athlètes et suivez vos performances"
+                : "Découvrez et suivez vos athlètes favoris"
+              }
+            </p>
+          </div>
+          <Badge variant={role === "AGENT" ? "default" : "secondary"} className="text-sm px-3 py-1">
+            {role === "AGENT" ? "Agent" : "Collaborateur"}
+          </Badge>
+        </div>
+
+        {role === "AGENT" ? <AgentDashboard stats={stats} navItems={agentNavItems} athletes={athletes} /> : <CollaboratorDashboard stats={stats} />}
+      </div>
+    </SidebarInset>
+  );
+}
+
+function AgentDashboard({ stats, navItems, athletes }) {
+  if (!stats) {
+    return <LoadingSkeleton />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Mes Athlètes"
+          value={stats.athletes}
+          description="Athlètes sous contrat"
+          icon={BicepsFlexed}
+          trend="+2 ce mois"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Contrats Actifs"
+          value={stats.activeContracts}
+          description="Contrats en cours"
+          icon={FileText}
+          trend="+3 ce mois"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Revenus Totaux"
+          value={stats.totalRevenue}
+          description="Commissions ce mois"
+          icon={DollarSign}
+          trend="+12.5%"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Offres en Attente"
+          value={stats.pendingOffers}
+          description="À traiter"
+          icon={Clock}
+          trend="2 urgentes"
+          trendUp={false}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Activité Récente</CardTitle>
+            <CardDescription>Dernières actions sur vos athlètes</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.recentActivity.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} />
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-4">
+              Voir toute l&apos;activité
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Événements à Venir</CardTitle>
+            <CardDescription>Vos prochains rendez-vous</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.upcomingEvents.map((event) => (
+                <EventItem key={event.id} event={event} />
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-4">
+              <Calendar className="mr-2 h-4 w-4" />
+              Voir le calendrier
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Actions Rapides</CardTitle>
+          <CardDescription>Gérez vos athlètes et contrats</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Link href={navItems.find(item => item.label === "Mes Athlètes")?.href || "/athletes"}>
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                <BicepsFlexed className="h-5 w-5" />
+                <span className="text-sm">
+                  {athletes?.length === 1 ? "Mon Athlète" : "Mes Athlètes"}
+                </span>
+              </Button>
+            </Link>
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2" disabled>
+              <FileText className="h-5 w-5" />
+              <span className="text-sm">Contrats</span>
+            </Button>
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2" disabled>
+              <ChartNoAxesCombined className="h-5 w-5" />
+              <span className="text-sm">Analytics</span>
+            </Button>
+            <Link href="/messages">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                <MessageSquare className="h-5 w-5" />
+                <span className="text-sm">Messages</span>
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function CollaboratorDashboard({ stats }) {
+  if (!stats) {
+    return <LoadingSkeleton />;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <StatsCard
+          title="Athlètes Suivis"
+          value={stats.followedAthletes}
+          description="Que vous suivez"
+          icon={Heart}
+          trend="+5 cette semaine"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Opportunités"
+          value={stats.savedOpportunities}
+          description="Sauvegardées"
+          icon={Handshake}
+          trend="2 nouvelles"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Collaborations"
+          value={stats.activeCollaborations}
+          description="En cours"
+          icon={Building2}
+          trend="1 en négociation"
+          trendUp={true}
+        />
+        <StatsCard
+          title="Nouveaux Profils"
+          value={stats.newAthletes}
+          description="Cette semaine"
+          icon={Users}
+          trend="+15%"
+          trendUp={true}
+        />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Activité Récente</CardTitle>
+            <CardDescription>Vos dernières interactions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.recentActivity.map((activity) => (
+                <ActivityItem key={activity.id} activity={activity} isCollaborator />
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-4">
+              Voir toute l&apos;activité
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Athlètes Tendance</CardTitle>
+            <CardDescription>Les plus suivis cette semaine</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.trendingAthletes.map((athlete) => (
+                <TrendingAthleteItem key={athlete.id} athlete={athlete} />
+              ))}
+            </div>
+            <Button variant="outline" className="w-full mt-4">
+              <TrendingUp className="mr-2 h-4 w-4" />
+              Voir plus
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Explorer</CardTitle>
+          <CardDescription>Découvrez de nouveaux athlètes et opportunités</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <Link href="/athletes">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                <BicepsFlexed className="h-5 w-5" />
+                <span className="text-sm">Tous les Athlètes</span>
+              </Button>
+            </Link>
+            <Link href="/followed">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                <Heart className="h-5 w-5" />
+                <span className="text-sm">Mes Suivis</span>
+              </Button>
+            </Link>
+            <Link href="/organisations">
+              <Button variant="outline" className="w-full h-20 flex flex-col gap-2">
+                <Building2 className="h-5 w-5" />
+                <span className="text-sm">Organisations</span>
+              </Button>
+            </Link>
+            <Button variant="outline" className="w-full h-20 flex flex-col gap-2" disabled>
+              <ChartNoAxesCombined className="h-5 w-5" />
+              <span className="text-sm">Analytics</span>
             </Button>
           </div>
-        </div>
-      </header>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
-      <div className="container mx-auto px-4 py-12">
-        <motion.div
-          className="max-w-4xl mx-auto"
-          initial="initial"
-          animate={isVisible ? "animate" : "initial"}
-          variants={{
-            animate: {
-              transition: {
-                staggerChildren: 0.1
-              }
-            }
-          }}
-        >
-          <motion.div variants={fadeInUp} className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
-              <Sparkles className="h-4 w-4" />
-              Bienvenue, {user.first_name || user.display_name || "Agent"} !
-            </div>
-            <h1 className="text-4xl font-bold mb-4">
-              Votre tableau de bord agent
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-              Gérez vos athlètes et développez leur carrière avec nos outils professionnels
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-12">
-            {managementCards.map((card) => {
-              const Icon = card.icon;
-              const ActionIcon = card.action?.icon;
-
-              return (
-                <motion.div key={card.title} variants={fadeInUp}>
-                  <Card className="h-full hover:shadow-lg transition-shadow">
-                    <CardHeader>
-                      <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-lg ${card.iconStyles.container}`}>
-                          <Icon className={`h-6 w-6 ${card.iconStyles.icon}`} />
-                        </div>
-                        <div>
-                          <CardTitle>{card.title}</CardTitle>
-                          <p className="text-sm text-muted-foreground">{card.description}</p>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        {card.stats.map((stat) => (
-                          <div key={stat.label} className="flex justify-between text-sm">
-                            <span>{stat.label}</span>
-                            <span className="font-medium">{stat.value}</span>
-                          </div>
-                        ))}
-                      </div>
-                      {card.action.href ? (
-                        <Button className="w-full" asChild>
-                          <Link href={card.action.href}>
-                            {card.action.label}
-                            {ActionIcon && <ActionIcon className="ml-2 h-4 w-4" />}
-                          </Link>
-                        </Button>
-                      ) : (
-                        <Button
-                          className="w-full"
-                          variant={card.action.variant}
-                          disabled={card.action.disabled}
-                        >
-                          {card.action.label}
-                          {card.action.note && (
-                            <span className="ml-2 text-xs">{card.action.note}</span>
-                          )}
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              );
-            })}
+function StatsCard({ title, value, description, icon: Icon, trend, trendUp }) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">
+          {title}
+        </CardTitle>
+        <Icon className="h-4 w-4 text-muted-foreground" />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        {trend && (
+          <div className={`flex items-center gap-1 mt-2 text-xs ${trendUp ? 'text-green-600' : 'text-orange-600'}`}>
+            <TrendingUp className={`h-3 w-3 ${trendUp ? '' : 'rotate-180'}`} />
+            <span>{trend}</span>
           </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
-          <motion.div variants={fadeInUp}>
-            <Card>
-              <CardHeader>
-                <CardTitle>Premiers pas</CardTitle>
-                <p className="text-muted-foreground">
-                  Suivez ces étapes pour commencer à utiliser SponsorsClub efficacement
-                </p>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {onboardingSteps.map((step) => {
-                    const isUpcoming = step.status === "upcoming";
-                    const StepActionIcon = step.action?.icon;
+function ActivityItem({ activity, isCollaborator = false }) {
+  const getIcon = () => {
+    switch (activity.type) {
+      case "contract":
+        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case "meeting":
+        return <Calendar className="h-4 w-4 text-blue-600" />;
+      case "offer":
+        return <AlertCircle className="h-4 w-4 text-orange-600" />;
+      case "follow":
+        return <Heart className="h-4 w-4 text-pink-600" />;
+      case "collab":
+        return <Handshake className="h-4 w-4 text-purple-600" />;
+      case "update":
+        return <BicepsFlexed className="h-4 w-4 text-blue-600" />;
+      default:
+        return <CheckCircle2 className="h-4 w-4" />;
+    }
+  };
 
-                    return (
-                      <div
-                        key={step.number}
-                        className={`flex items-start gap-4 p-4 border rounded-lg ${
-                          isUpcoming ? "opacity-50" : ""
-                        }`}
-                      >
-                        <div
-                          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                            isUpcoming
-                              ? "bg-muted text-muted-foreground"
-                              : "bg-primary text-primary-foreground"
-                          }`}
-                        >
-                          {step.number}
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium mb-1">{step.title}</h4>
-                          <p className={`text-sm text-muted-foreground ${
-                            step.action ? "mb-3" : ""
-                          }`}
-                          >
-                            {step.description}
-                          </p>
-                          {step.action && (
-                            <Button size="sm" asChild>
-                              <Link href={step.action.href}>
-                                {step.action.label}
-                                {StepActionIcon && (
-                                  <StepActionIcon className="ml-2 h-3 w-3" />
-                                )}
-                              </Link>
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        </motion.div>
+  return (
+    <div className="flex items-start gap-3 pb-3 border-b last:border-0 last:pb-0">
+      <div className="mt-1">{getIcon()}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">
+          {activity.athlete || activity.organisation}
+        </p>
+        <p className="text-xs text-muted-foreground">{activity.action}</p>
+        {activity.amount && (
+          <Badge variant="outline" className="mt-1 text-xs">
+            {activity.amount}
+          </Badge>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground whitespace-nowrap">
+        {activity.date}
+      </span>
+    </div>
+  );
+}
+
+function EventItem({ event }) {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border">
+      <div className="flex flex-col items-center justify-center w-12 h-12 rounded-lg bg-primary/10">
+        <Calendar className="h-5 w-5 text-primary" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium">{event.title}</p>
+        <p className="text-xs text-muted-foreground">
+          {new Date(event.date).toLocaleDateString('fr-FR')} à {event.time}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function TrendingAthleteItem({ athlete }) {
+  return (
+    <div className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-pink-500 to-orange-500" />
+        <div>
+          <p className="text-sm font-medium">{athlete.name}</p>
+          <p className="text-xs text-muted-foreground">{athlete.sport}</p>
+        </div>
+      </div>
+      <Badge variant="secondary" className="text-xs">
+        <TrendingUp className="h-3 w-3 mr-1" />
+        {athlete.followers}
+      </Badge>
+    </div>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="h-32 bg-muted rounded-lg" />
+        ))}
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div className="h-96 bg-muted rounded-lg" />
+        <div className="h-96 bg-muted rounded-lg" />
       </div>
     </div>
   );

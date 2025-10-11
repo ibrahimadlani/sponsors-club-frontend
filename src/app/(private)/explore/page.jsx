@@ -50,8 +50,7 @@ import {
   CarouselNext,
   CarouselPrevious,
 } from "@/components/ui/carousel";
-import { API_BASE_URL } from "@/lib/api";
-import { getAthletes } from "@/lib/api";
+import { athletes as athletesAPI } from "@/lib/api";
 
 // Hooks
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -337,7 +336,7 @@ export default function ExplorePage() {
 
   const fetchAthletes = useCallback(async () => {
     try {
-      const data = await getAthletes();
+      const data = await athletesAPI.getAthletes();
       return Array.isArray(data) ? data : [];
     } catch (err) {
       throw err;

@@ -19,7 +19,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import AddressCombobox from "@/components/address-combobox";
-import { fetchUserProfile, updateProfile } from "@/lib/api";
+import { users } from "@/lib/api";
 
 const profileFormSchema = z.object({
   first_name: z.string().min(2, { message: "Prénom trop court." }).max(100),
@@ -53,7 +53,7 @@ export function ProfileForm() {
     let mounted = true;
     (async () => {
       try {
-        const user = await fetchUserProfile();
+        const user = await users.getMe();
         if (!mounted) return;
         form.reset({
           first_name: user.first_name || "",
@@ -87,9 +87,9 @@ export function ProfileForm() {
         // Le backend vérifiera l'adresse via Google et mettra à jour Address si reconnue
         ...(data.raw_address ? { raw_address: data.raw_address } : {}),
       };
-      await updateProfile(payload);
+      await users.updateMe(payload);
       // Rafraîchir l'adresse vérifiée
-      const updated = await fetchUserProfile();
+      const updated = await users.getMe();
       setAddressText(updated.address || "");
       // Nettoyer le champ adresse brute pour éviter une nouvelle vérification inutile
       form.setValue("raw_address", "");

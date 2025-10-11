@@ -27,8 +27,7 @@ import {
 } from "lucide-react";
 
 import ResponsiveImage from "@/components/responsive-image";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import PageHeader from "@/components/page-header";
+import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -120,12 +119,8 @@ export default function FollowedFeedPage() {
   }, []);
 
   return (
-    <SidebarProvider>
-      <SidebarInset className="min-h-screen flex flex-col">
-        {/* Shared header */}
-        <PageHeader user={user} />
-
-        <div className="max-w-6xl mx-auto px-4 py-6 w-full">
+    <SidebarInset className="min-h-screen flex flex-col">
+      <div className="max-w-6xl mx-auto px-4 py-6 w-full">
           {/* Followed athletes grid */}
           <section className="mb-8">
             <div className="flex items-center justify-between mb-3">
@@ -207,11 +202,11 @@ export default function FollowedFeedPage() {
             )}
           </div>
         </div>
-      </SidebarInset>
-      {/* Mobile sticky navigation/footer */}
-      <footer
-        className={"fixed bottom-5 left-2.5 right-2.5 w-auto max-w-[560px] mx-auto py-3 bg-background text-center border-t md:hidden px-7 rounded-full shadow-xl"}
-      >
+
+        {/* Mobile sticky navigation/footer */}
+        <footer
+          className={"fixed bottom-5 left-2.5 right-2.5 w-auto max-w-[560px] mx-auto py-3 bg-background text-center border-t md:hidden px-7 rounded-full shadow-xl"}
+        >
         {user ? (
           <div className="flex justify-between w-full">
             {/* Connecté: Explorer, Suivis, Collab, Messages, Profile */}
@@ -254,7 +249,7 @@ export default function FollowedFeedPage() {
           </div>
         )}
       </footer>
-    </SidebarProvider>
+    </SidebarInset>
   );
 }
 

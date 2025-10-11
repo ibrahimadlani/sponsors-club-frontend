@@ -1,0 +1,283 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useUserRole } from "@/hooks/useUserRole";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { SidebarInset } from "@/components/ui/sidebar";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  BicepsFlexed,
+  TrendingUp,
+  Users,
+  DollarSign,
+  Calendar,
+  Heart,
+  MessageSquare,
+  FileText,
+  ChartNoAxesCombined,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Handshake,
+} from "lucide-react";
+import Link from "next/link";
+
+const fadeInUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.6 }
+};
+
+export default function AgentDashboardPage() {
+  const { user } = useCurrentUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isVisible, setIsVisible] = useState(false);
+
+  // Check if user was redirected from auth pages while already authenticated
+  useEffect(() => {
+    const alreadyAuthenticated = searchParams.get("already_authenticated");
+    
+    if (alreadyAuthenticated === "true") {
+      toast.info("Déjà connecté", {
+        description: "Vous êtes déjà connecté à votre compte.",
+        duration: 4000,
+      });
+    }
+  }, [searchParams]);
+
+  const managementCards = [
+    {
+      title: "Gestion d'athlètes",
+      description: "Créez et gérez les profils de vos talents",
+      icon: Users,
+      iconStyles: {
+        container: "bg-blue-100",
+        icon: "text-blue-600"
+      },
+      stats: [
+        { label: "Athlètes actifs", value: "0" },
+        { label: "Profils complétés", value: "0%" }
+      ],
+      action: {
+        label: "Créer votre premier athlète",
+        href: "/onboarding/athlete",
+        icon: ArrowRight
+      }
+    },
+    {
+      title: "Opportunités",
+      description: "Trouvez des partenariats pour vos athlètes",
+      icon: Building2,
+      iconStyles: {
+        container: "bg-green-100",
+        icon: "text-green-600"
+      },
+      stats: [
+        { label: "Contrats actifs", value: "0" },
+        { label: "Revenus générés", value: "0 €" }
+      ],
+      action: {
+        label: "Rechercher des sponsors",
+        variant: "outline",
+        disabled: true,
+        note: "(Bientôt disponible)"
+      }
+    }
+  ];
+
+  const onboardingSteps = [
+    {
+      number: 1,
+      title: "Créez votre premier profil d'athlète",
+      description: "Commencez par ajouter les informations de base de votre athlète principal",
+      action: {
+        label: "Commencer",
+        href: "/onboarding/athlete",
+        icon: ArrowRight
+      }
+    },
+    {
+      number: 2,
+      title: "Complétez les profils",
+      description: "Ajoutez des photos, statistiques et informations détaillées",
+      status: "upcoming"
+    },
+    {
+      number: 3,
+      title: "Recherchez des partenaires",
+      description: "Utilisez notre plateforme pour trouver des opportunités de sponsoring",
+      status: "upcoming"
+    }
+  ];
+
+  useEffect(() => {
+    setIsVisible(true);
+    
+    // Rediriger si pas un agent
+    if (user && user.account_type === "COLLABORATOR") {
+      router.push("/explore");
+    }
+  }, [user, router]);
+
+  if (!user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b bg-background/95 backdrop-blur">
+        <div className="container mx-auto flex h-16 items-center justify-between px-4">
+          <Logo />
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" asChild>
+              <Link href="/settings">Paramètres</Link>
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-12">
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial="initial"
+          animate={isVisible ? "animate" : "initial"}
+          variants={{
+            animate: {
+              transition: {
+                staggerChildren: 0.1
+              }
+            }
+          }}
+        >
+          <motion.div variants={fadeInUp} className="text-center mb-12">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
+              <Sparkles className="h-4 w-4" />
+              Bienvenue, {user.first_name || user.display_name || "Agent"} !
+            </div>
+            <h1 className="text-4xl font-bold mb-4">
+              Votre tableau de bord agent
+            </h1>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Gérez vos athlètes et développez leur carrière avec nos outils professionnels
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-12">
+            {managementCards.map((card) => {
+              const Icon = card.icon;
+              const ActionIcon = card.action?.icon;
+
+              return (
+                <motion.div key={card.title} variants={fadeInUp}>
+                  <Card className="h-full hover:shadow-lg transition-shadow">
+                    <CardHeader>
+                      <div className="flex items-center gap-3">
+                        <div className={`p-3 rounded-lg ${card.iconStyles.container}`}>
+                          <Icon className={`h-6 w-6 ${card.iconStyles.icon}`} />
+                        </div>
+                        <div>
+                          <CardTitle>{card.title}</CardTitle>
+                          <p className="text-sm text-muted-foreground">{card.description}</p>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-2">
+                        {card.stats.map((stat) => (
+                          <div key={stat.label} className="flex justify-between text-sm">
+                            <span>{stat.label}</span>
+                            <span className="font-medium">{stat.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {card.action.href ? (
+                        <Button className="w-full" asChild>
+                          <Link href={card.action.href}>
+                            {card.action.label}
+                            {ActionIcon && <ActionIcon className="ml-2 h-4 w-4" />}
+                          </Link>
+                        </Button>
+                      ) : (
+                        <Button
+                          className="w-full"
+                          variant={card.action.variant}
+                          disabled={card.action.disabled}
+                        >
+                          {card.action.label}
+                          {card.action.note && (
+                            <span className="ml-2 text-xs">{card.action.note}</span>
+                          )}
+                        </Button>
+                      )}
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <motion.div variants={fadeInUp}>
+            <Card>
+              <CardHeader>
+                <CardTitle>Premiers pas</CardTitle>
+                <p className="text-muted-foreground">
+                  Suivez ces étapes pour commencer à utiliser SponsorsClub efficacement
+                </p>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {onboardingSteps.map((step) => {
+                    const isUpcoming = step.status === "upcoming";
+                    const StepActionIcon = step.action?.icon;
+
+                    return (
+                      <div
+                        key={step.number}
+                        className={`flex items-start gap-4 p-4 border rounded-lg ${
+                          isUpcoming ? "opacity-50" : ""
+                        }`}
+                      >
+                        <div
+                          className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
+                            isUpcoming
+                              ? "bg-muted text-muted-foreground"
+                              : "bg-primary text-primary-foreground"
+                          }`}
+                        >
+                          {step.number}
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium mb-1">{step.title}</h4>
+                          <p className={`text-sm text-muted-foreground ${
+                            step.action ? "mb-3" : ""
+                          }`}
+                          >
+                            {step.description}
+                          </p>
+                          {step.action && (
+                            <Button size="sm" asChild>
+                              <Link href={step.action.href}>
+                                {step.action.label}
+                                {StepActionIcon && (
+                                  <StepActionIcon className="ml-2 h-3 w-3" />
+                                )}
+                              </Link>
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </div>
+    </div>
+  );
+}

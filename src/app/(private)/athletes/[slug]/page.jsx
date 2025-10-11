@@ -1,5 +1,5 @@
 "use client";
-import { followAthlete, unfollowAthlete } from "@/lib/api";
+import { getAthleteBySlug, followAthlete, unfollowAthlete } from "@/lib/api";
 
 // Page: Athlete detail
 // Shows athlete header summary, media carousel, stats and charts.
@@ -19,16 +19,13 @@ const safeFormatPrice = (value) => {
     return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(num) + '€';
   } catch { return `${value}€`; }
 };
-import { getAthleteBySlug } from "@/lib/api";
+
 import { Button } from "@/components/ui/button";
 import { Carousel, CarouselContent, CarouselItem } from "@/components/ui/carousel";
-import { NavUser } from "@/components/nav-user";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { Globe, Euro, ChevronDown, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon } from "lucide-react";
+import { ChevronDown, Calendar as CalendarIcon, MapPin, Users, Image as ImageIcon } from "lucide-react";
 import ResponsiveImage from "@/components/responsive-image";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import AthleteProfileHeader from "@/components/athlete-profile";
-import PageHeader from "@/components/page-header";
 import { Calendar } from "@/components/ui/calendar";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -430,28 +427,9 @@ export default function AthletePage() {
   }
 
   return (
-    <SidebarProvider>
-      <SidebarInset className="min-h-screen flex flex-col">
-        {/* Shared header (with mobile Sponsor CTA in the rightSlot) */}
-        <PageHeader
-          user={user}
-          rightSlot={
-            <div className="flex items-center gap-2">
-              <a
-                href="/sponsor"
-                className="md:hidden text-pink-600 font-semibold text-xs hover:underline"
-              >
-                Sponsor
-              </a>
-              <NavUser user={user} />
-            </div>
-          }
-        />
-
-        {/* Main athlete profile content */}
-        <div className="max-w-6xl mx-auto px-4 py-8 flex-1">
-          {/* Compact header summary (title, breadcrumbs, meta) */}
-          <AthleteProfileHeader
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      {/* Compact header summary (title, breadcrumbs, meta) */}
+      <AthleteProfileHeader
             title={athlete.full_name || athlete.name}
             breadcrumbs={[ 
               { label: "Athlètes", href: "/athletes" },
@@ -833,49 +811,6 @@ export default function AthletePage() {
               </ul>
             </div>
           </section>
-        </div>
-
-        {/* FOOTER (desktop, French) */}
-        <footer className="w-full px-6 md:px-12 2xl:px-24 py-4 text-center border-t bg-background items-center justify-between text-sm hidden md:flex mt-auto">
-          <div className="flex flex-wrap items-center gap-2.5">
-            <span className="">
-              &copy; {new Date().getFullYear()} SponsorsClub
-            </span>
-            <span> · </span>
-            <Link href="/privacy" className="hover:underline">
-              Confidentialité
-            </Link>
-            <span> · </span>
-            <Link href="/terms-of-services" className="hover:underline">
-              Conditions générales
-            </Link>
-            <span> · </span>
-            <Link href="/sitemap" className="hover:underline">
-              Plan du site
-            </Link>
-            <span> · </span>
-            <Link href="/about" className="hover:underline">
-              À propos
-            </Link>
-          </div>
-          <div className="flex  items-center gap-2.5">
-            <Link href="/privacy" className="font-semibold flex items-center gap-1 hover:underline  whitespace-nowrap">
-              <Globe className="w-4 h-4" />
-              Français
-            </Link>
-            <span> · </span>
-            <Link href="/privacy" className="font-semibold flex items-center gap-1 hover:underline  whitespace-nowrap">
-              <Euro className="w-4 h-4" />
-              EUR
-            </Link>
-            <span> · </span>
-            <Link href="/privacy" className="font-semibold flex items-center gap-1 hover:underline  whitespace-nowrap">
-              Aide & ressources
-              <ChevronDown className="w-4 h-4" />
-            </Link>
     </div>
-        </footer>
-      </SidebarInset>
-    </SidebarProvider>
   );
 }

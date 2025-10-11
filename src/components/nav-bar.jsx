@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
-import { BicepsFlexed, Building, ChartNoAxesCombined, Handshake, Heart, MessagesSquare, ShieldHalf, User, Users } from "lucide-react";
 import {
   NavigationMenu,
   NavigationMenuItem,
@@ -13,28 +12,44 @@ import {
   NavigationMenuList,
   navigationMenuTriggerStyle,
 } from "@/components/ui/navigation-menu";
+import { getNavByRole } from "@/config/navigation";
+import { useAgentNavigation } from "@/hooks/useAgentNavigation";
 
-const NAV_LINKS = [
-  { href: "/athletes", label: "Athlètes", icon: BicepsFlexed },
-  { href: "/follows", label: "Suivis", icon: Heart },
-  { href: "/collaborations", label: "Collabs", icon: Handshake },
-  { href: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
-];
-
-export function NavMenu() {
+/**
+ * NavMenu Component
+ * 
+ * Dynamic navigation menu that displays different items based on user role.
+ * For AGENT role, automatically adapts "Mes Athlètes" link if only one athlete.
+ * 
+ * @param {Object} props
+ * @param {string} props.role - User role (AGENT, COLLABORATOR, ADMIN) or null for unauthenticated
+ * @param {Array} props.items - Optional custom navigation items (overrides role-based nav)
+ */
+export function NavMenu({ role, items = null }) {
   const pathname = usePathname();
+  
+  // Get navigation adapted for agents (single athlete redirect)
+  const { navItems: agentNavItems } = useAgentNavigation();
+
+  // Use custom items or get items based on role
+  // For AGENT role, use adapted navigation from hook
+  let navItems = items;
+  if (!items) {
+    navItems = role === "AGENT" ? agentNavItems : getNavByRole(role);
+  }
 
   return (
     <NavigationMenu className="flex-col">
       <NavigationMenuList>
-        {NAV_LINKS.map(({ href, label, icon: Icon }) => (
+        {navItems.map(({ href, label, icon: Icon, description }) => (
           <NavigationMenuItem key={href}>
             <Link href={href} legacyBehavior passHref>
               <NavigationMenuLink
                 className={cn(navigationMenuTriggerStyle(), "flex items-center")}
                 data-active={pathname.startsWith(href) ? "true" : undefined}
+                title={description}
               >
-                <Icon className="me-2 h-4 w-4" />
+                {Icon && <Icon className="me-2 h-4 w-4" />}
                 {label}
               </NavigationMenuLink>
             </Link>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { userEndpoints } from "@/lib/endpoints";
+import { users, getUserFromToken } from "@/lib/api";
 
 function redirectToLogin() {
   if (typeof window !== "undefined") {
@@ -18,7 +18,7 @@ export const useCurrentUser = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await userEndpoints.me();
+      const data = await users.getMe();
       setUser(data);
       return data;
     } catch (err) {
@@ -38,16 +38,56 @@ export const useCurrentUser = () => {
     let isMounted = true;
     const load = async () => {
       try {
-        const data = await userEndpoints.me();
+        // D'abord, essayer de récupérer les données du JWT (instantané)
+        const tokenData = getUserFromToken();
+        if (tokenData && isMounted) {
+          // Mapper les données du JWT au format attendu
+          setUser({
+            id: tokenData.user_id,
+            email: tokenData.email,
+            first_name: tokenData.prenom,
+            last_name: tokenData.nom,
+            role: tokenData.role,
+            is_staff: tokenData.role === "STAFF" || tokenData.role === "ADMIN",
+            agent_has_athlete: tokenData.agent_has_athlete,
+            collaborator_has_org: tokenData.collaborator_has_org,
+          });
+          setLoading(false);
+        }
+
+        // Ensuite, faire un appel API pour avoir les données complètes
+        const data = await users.getMe();
         if (!isMounted) return;
-        setUser(data);
+        
+        // Enrichir avec les données du JWT si l'API ne les retourne pas
+        setUser({
+          ...data,
+          role: data.role || tokenData?.role,
+          is_staff: data.is_staff ?? (tokenData?.role === "STAFF" || tokenData?.role === "ADMIN"),
+        });
       } catch (err) {
         if (!isMounted) return;
-        setError(err);
-        setUser(null);
-        // Redirige si le token est invalide ou le refresh échoue
-        if (err?.status === 401 || /refresh/i.test(err?.message)) {
-          redirectToLogin();
+        
+        // Si l'API échoue mais qu'on a les données du JWT, les garder
+        const tokenData = getUserFromToken();
+        if (tokenData) {
+          setUser({
+            id: tokenData.user_id,
+            email: tokenData.email,
+            first_name: tokenData.prenom,
+            last_name: tokenData.nom,
+            role: tokenData.role,
+            is_staff: tokenData.role === "STAFF" || tokenData.role === "ADMIN",
+            agent_has_athlete: tokenData.agent_has_athlete,
+            collaborator_has_org: tokenData.collaborator_has_org,
+          });
+        } else {
+          setError(err);
+          setUser(null);
+          // Redirige si le token est invalide ou le refresh échoue
+          if (err?.status === 401 || /refresh/i.test(err?.message)) {
+            redirectToLogin();
+          }
         }
       } finally {
         if (isMounted) setLoading(false);

@@ -6,8 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Check, Globe, DollarSign } from "lucide-react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { fetchUserProfile } from "@/lib/api";
-import { userEndpoints } from "@/lib/endpoints";
+import { users } from "@/lib/api";
 
 const languages = [
   { code: "fr", name: "Français", flag: "🇫🇷" },
@@ -43,7 +42,7 @@ export function LanguageCurrencyModal({ open, onOpenChange }) {
     setSelectedLanguage(code);
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      await userEndpoints.partialUpdateMe({ language: code, timezone: tz });
+      await users.updateMe({ language: code, timezone: tz });
     } catch (e) {
       console.error("Failed to update language", e);
     }
@@ -52,7 +51,7 @@ export function LanguageCurrencyModal({ open, onOpenChange }) {
   const handleSelectCurrency = async (code) => {
     setSelectedCurrency(code);
     try {
-      await userEndpoints.partialUpdateMe({ currency: code });
+      await users.updateMe({ currency: code });
     } catch (e) {
       console.error("Failed to update currency", e);
     }
@@ -64,7 +63,7 @@ export function LanguageCurrencyModal({ open, onOpenChange }) {
       // Initialize selections from latest preferences when modal opens
       (async () => {
         try {
-          const profile = await fetchUserProfile();
+          const profile = await users.getMe();
           const lang = (profile.language || user?.language || selectedLanguage || "fr").toLowerCase();
           const curr = (profile.currency || user?.currency || selectedCurrency || "EUR").toUpperCase();
           // Validate against supported lists

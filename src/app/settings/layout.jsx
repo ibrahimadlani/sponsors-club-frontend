@@ -15,17 +15,17 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import PageHeader from "@/components/page-header";
+import AppHeader from "@/components/app-header";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
 
 const sidebarNavItems = [
-  { title: "Profile", href: "/settings", icon: <User className="w-4 h-4" /> },
+  { title: "Vue d'ensemble", href: "/settings", icon: <User className="w-4 h-4" /> },
   { title: "Notifications", href: "/settings/notifications", icon: <Bell className="w-4 h-4" /> },
-  { title: "Appearance", href: "/settings/appearance", icon: <AppWindow className="w-4 h-4" /> },
-  { title: "Billing", href: "/settings/billing", icon: <CreditCard className="w-4 h-4" /> },
-  { title: "Display", href: "/settings/display", icon: <LayoutDashboard className="w-4 h-4" /> },
+  { title: "Apparence", href: "/settings/appearance", icon: <AppWindow className="w-4 h-4" /> },
+  { title: "Facturation", href: "/settings/billing", icon: <CreditCard className="w-4 h-4" /> },
+  { title: "Affichage", href: "/settings/display", icon: <LayoutDashboard className="w-4 h-4" /> },
 ];
 
 const SettingsLayout = ({ children }) => {
@@ -50,15 +50,15 @@ const SettingsLayout = ({ children }) => {
     <SidebarProvider>
       <SidebarInset>
         {/* Unified header */}
-        <PageHeader user={user} />
+        <AppHeader />
 
         <div className="px-6 md:px-12 2xl:px-24 py-4">
           <div className="container flex items-center mx-auto w-full py-10 pb-16">
             <div className="space-y-6 w-full">
               <div className="space-y-0.5 w-full">
-                <h2 className="text-2xl font-bold tracking-tight">Préférences</h2>
+                <h2 className="text-2xl font-bold tracking-tight">Centre de paramètres</h2>
                 <p className="text-muted-foreground">
-                  Manage your account settings and set e-mail preferences.
+                  Pilotez votre profil, vos notifications et vos intégrations à partir d&apos;un espace unifié.
                 </p>
               </div>
               <Separator className="my-6" />

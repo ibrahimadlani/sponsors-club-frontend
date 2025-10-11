@@ -1,6 +1,7 @@
 "use client";
 
-import { useSearchParams, Suspense } from "next/navigation";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Logo from "@/components/ui/logo";
 import { OrganisationOnboardingForm } from "@/components/forms/organisation-onboarding-form";
 import { Alert, AlertDescription } from "@/components/ui/alert";

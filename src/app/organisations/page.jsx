@@ -9,7 +9,7 @@
 import { useState, useEffect } from "react";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import PageHeader from "@/components/page-header";
+import AppHeader from "@/components/app-header";
 import ItemsGrid from "@/components/items-grid";
 
 // Exemple d'items organisations (à adapter selon ta vraie structure)
@@ -119,7 +119,7 @@ export default function OrganisationsPage() {
     <SidebarProvider>
       <SidebarInset className="min-h-screen flex flex-col">
         {/* Shared app header */}
-        <PageHeader user={user} />
+        <AppHeader />
 
         {/* Tabs for organisation categories */}
         {/* <OrganisationsTabs className="w-full"/> */}

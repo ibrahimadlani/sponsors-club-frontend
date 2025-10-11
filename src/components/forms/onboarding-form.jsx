@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
-import { fetchUserProfile, updateProfile } from "@/lib/api"; // Import API
+import { users } from "@/lib/api"; // Import API
 import { toast } from "sonner"; // Notifications
 import { motion } from "framer-motion"; // Animation du message de bienvenue
 
@@ -54,7 +54,7 @@ export function OnboardingForm({ className, ...props }) {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        const userData = await fetchUserProfile();
+        const userData = await users.getMe();
         setUser(userData);
       } catch (error) {
         toast.error("Impossible de charger les informations de l'utilisateur.");
@@ -67,7 +67,7 @@ export function OnboardingForm({ className, ...props }) {
   const onSubmit = async (data) => {
     setLoading(true);
     try {
-      await updateProfile(data);
+      await users.updateMe(data);
       toast.success("Votre profil a été mis à jour !");
       router.push("/"); // Redirection après la mise à jour
     } catch (error) {

@@ -3,10 +3,20 @@
 import Logo from "@/components/ui/logo";
 import { NavMenu } from "@/components/nav-bar";
 import { NavUser } from "@/components/nav-user";
+import { useUserRole } from "@/hooks/useUserRole";
 
-// Generic sticky page header shared by list/detail pages.
-// Renders: Logo (left, desktop), main nav (center, desktop), Logo (center on mobile), and user menu (right).
+/**
+ * PageHeader Component
+ * 
+ * Generic sticky page header shared by list/detail pages.
+ * Renders: Logo (left, desktop), main nav (center, desktop), Logo (center on mobile), and user menu (right).
+ * 
+ * Now includes role-based navigation using useUserRole() hook.
+ */
 export default function PageHeader({ user, rightSlot = null }) {
+  // Get role directly from JWT for role-based navigation
+  const { role } = useUserRole();
+
   return (
     <header className="sticky top-0 z-50 w-full bg-background text-center border-b px-6 md:px-0">
       <div className="relative flex items-center justify-center min-h-[80px]">
@@ -15,9 +25,9 @@ export default function PageHeader({ user, rightSlot = null }) {
           <Logo />
         </div>
 
-        {/* Center navigation (desktop) */}
+        {/* Center navigation (desktop) - with role-based items */}
         <div className="relative max-w-md flex-col justify-center items-center lg:flex hidden">
-          <NavMenu />
+          <NavMenu role={role} />
         </div>
 
         {/* Center logo (mobile) */}

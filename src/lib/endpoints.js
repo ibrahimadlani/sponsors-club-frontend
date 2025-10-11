@@ -1,4 +1,4 @@
-import { API_BASE_URL, refreshAccessToken } from "./api";
+import { API_BASE_URL, refreshAccessToken, fetchWithTokenRefresh } from "./api";
 const API_PREFIX = "/api/";
 
 const buildUrl = (path, params) => {
@@ -47,12 +47,10 @@ const apiRequest = async (
     headers,
     body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
   };
-  let response = await fetch(url, requestInit);
-  if (response.status === 401 && auth) {
-    token = await refreshAccessToken();
-    headers.set("Authorization", `Bearer ${token}`);
-    response = await fetch(url, requestInit);
-  }
+  
+  // Utiliser fetchWithTokenRefresh pour gérer automatiquement le rafraîchissement
+  let response = await fetchWithTokenRefresh(url, requestInit);
+  
   if (!response.ok) {
     const errorPayload = await parseResponse(response);
     const error = new Error(

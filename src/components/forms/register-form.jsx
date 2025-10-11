@@ -207,110 +207,145 @@ export function RegisterForm({ className, ...props }) {
                 </Button>
               </div>
 
-              <div className="relative text-center text-sm mb-6 after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
+              <div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
                 <span className="relative z-10 bg-background px-2 text-muted-foreground">
                   Ou s&apos;inscrire ici
                 </span>
-            </div>
+              </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              {/* Account Type Tabs */}
-              <div className="grid gap-2 mt-4 col-span-2">
+              {/* Email - 100% width */}
+              <div className="grid gap-2">
+                <div className="flex items-center">
+                  <Label htmlFor="email">Email</Label>
+                  <ErrorIcon message={errors.email?.message} />
+                </div>
+                <Input id="email" type="email" {...register("email")} placeholder="m@example.com" />
+                <FormFieldError message={errors.email?.message} showIcon={false} className="min-h-[1rem]" />
+              </div>
+
+              {/* First Name & Last Name - 50% 50% */}
+              <div className="grid gap-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="first_name">Prénom</Label>
+                      <ErrorIcon message={errors.first_name?.message} />
+                    </div>
+                    <Input id="first_name" {...register("first_name")} placeholder="Jean" />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="last_name">Nom</Label>
+                      <ErrorIcon message={errors.last_name?.message} />
+                    </div>
+                    <Input id="last_name" {...register("last_name")} placeholder="Dupont" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormFieldError message={errors.first_name?.message} showIcon={false} className="min-h-[1rem]" />
+                  <FormFieldError message={errors.last_name?.message} showIcon={false} className="min-h-[1rem]" />
+                </div>
+              </div>
+
+              {/* Account Type Tabs - 100% width displayed as 50% 50% */}
+              <div className="grid gap-2">
                 <div className="flex items-center">
                   <Label htmlFor="account_type">Type de compte</Label>
                   <ErrorIcon message={errors.account_type?.message} />
                 </div>
                 <Tabs value={accountType} onValueChange={setAccountType} className="w-full">
-                  <TabsList className="w-full">
-                    <TabsTrigger value="AGENT" className="flex-1 flex  gap-2 ">
+                  <TabsList className="w-full grid grid-cols-2">
+                    <TabsTrigger value="AGENT" className="flex items-center gap-2">
                       <HandCoins className="w-4 h-4" />
                       Sponsor
                     </TabsTrigger>
-                    <TabsTrigger value="COLLABORATOR" className="flex-1 flex items-center gap-2">
+                    <TabsTrigger value="COLLABORATOR" className="flex items-center gap-2">
                       <Medal className="w-4 h-4" />
                       Athlete
                     </TabsTrigger>
                   </TabsList>
                 </Tabs>
                 <input type="hidden" {...register("account_type")} value={accountType} readOnly />
-                <FormFieldError message={errors.account_type?.message} showIcon={false} />
+                <FormFieldError message={errors.account_type?.message} showIcon={false} className="min-h-[1rem]" />
               </div>
-            </div>
 
-            {/* Email */}
-            <div className="grid gap-2 mt-4">
-              <div className="flex items-center">
-                <Label htmlFor="email">Email</Label>
-                <ErrorIcon message={errors.email?.message} />
-              </div>
-              <Input id="email" type="email" {...register("email")} />
-              <FormFieldError message={errors.email?.message} showIcon={false} />
-            </div>
+              {/* Phone Number - Indicatif + Téléphone */}
+              <div className="grid gap-2">
+                <div className="grid grid-cols-8 gap-3">
+                  <div className="col-span-3">
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="phone_country_code">Indicatif</Label>
+                      <ErrorIcon message={errors.phone_country_code?.message} />
+                    </div>
+                    <Select value={phoneCode} onValueChange={(val) => setPhoneCode(val)}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="Sélectionner" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="+33">🇫🇷 +33</SelectItem>
+                        <SelectItem value="+1">🇺🇸 +1</SelectItem>
+                        <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <input type="hidden" {...register("phone_country_code")} value={phoneCode} readOnly />
+                  </div>
 
-
-            {/* Phone Number */}
-            <div className="grid grid-cols-8 gap-3 mt-4">
-              <div className="grid col-span-3 gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="phone_country_code">Indicatif</Label>
-                  <ErrorIcon message={errors.phone_country_code?.message} />
+                  <div className="col-span-5">
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="phone_number">Numéro de téléphone</Label>
+                      <ErrorIcon message={errors.phone_number?.message} />
+                    </div>
+                    <Input
+                      id="phone_number"
+                      placeholder={PHONE_RULES[phoneCode]?.example || "ex: numéro"}
+                      {...register("phone_number")}
+                      onChange={(e) => {
+                        const digits = e.target.value.replace(/\D/g, "");
+                        const rule = PHONE_RULES[phoneCode];
+                        const limited = rule ? digits.slice(0, rule.max) : digits.slice(0, 15);
+                        e.target.value = limited;
+                      }}
+                    />
+                  </div>
                 </div>
-                <Select value={phoneCode} onValueChange={(val) => setPhoneCode(val)}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Sélectionner" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                    <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                    <SelectItem value="+44">🇬🇧 +44</SelectItem>
-                  </SelectContent>
-                </Select>
-                <input type="hidden" {...register("phone_country_code")} value={phoneCode} readOnly />
-                <FormFieldError message={errors.phone_country_code?.message} showIcon={false} />
-              </div>
-
-              <div className="grid col-span-5 gap-2">
-                <div className="flex items-center">
-                  <Label htmlFor="phone_number">Numéro de téléphone</Label>
-                  <ErrorIcon message={errors.phone_number?.message} />
+                <div className="grid grid-cols-8 gap-3">
+                  <div className="col-span-3">
+                    <FormFieldError message={errors.phone_country_code?.message} showIcon={false} className="min-h-[1rem]" />
+                  </div>
+                  <div className="col-span-5">
+                    <FormFieldError message={errors.phone_number?.message} showIcon={false} className="min-h-[1rem]" />
+                  </div>
                 </div>
-                <Input
-                  id="phone_number"
-                  placeholder={PHONE_RULES[phoneCode]?.example || "ex: numéro"}
-                  {...register("phone_number")}
-                  onChange={(e) => {
-                    const digits = e.target.value.replace(/\D/g, "");
-                    const rule = PHONE_RULES[phoneCode];
-                    const limited = rule ? digits.slice(0, rule.max) : digits.slice(0, 15);
-                    e.target.value = limited;
-                  }}
-                />
-                <FormFieldError message={errors.phone_number?.message} showIcon={false} />
               </div>
-            </div>
 
-            {/* Password */}
-            <div className="grid gap-2 mt-4">
-              <div className="flex items-center">
-                <Label htmlFor="password">Mot de passe</Label>
-                <ErrorIcon message={errors.password?.message} />
-              </div>
-              <Input id="password" type="password" {...register("password")} />
-              <FormFieldError message={errors.password?.message} showIcon={false} />
-            </div>
+              {/* Password & Confirm Password - 50% 50% */}
+              <div className="grid gap-2">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <ErrorIcon message={errors.password?.message} />
+                    </div>
+                    <Input id="password" type="password" {...register("password")} />
+                  </div>
 
-            {/* Confirm Password */}
-            <div className="grid gap-2 mt-4">
-              <div className="flex items-center">
-                <Label htmlFor="confirm_password">Confirmer le mot de passe</Label>
-                <ErrorIcon message={errors.confirm_password?.message} />
+                  <div>
+                    <div className="flex items-center mb-2">
+                      <Label htmlFor="confirm_password">Confirmer</Label>
+                      <ErrorIcon message={errors.confirm_password?.message} />
+                    </div>
+                    <Input id="confirm_password" type="password" {...register("confirm_password")} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <FormFieldError message={errors.password?.message} showIcon={false} className="min-h-[1rem]" />
+                  <FormFieldError message={errors.confirm_password?.message} showIcon={false} className="min-h-[1rem]" />
+                </div>
               </div>
-              <Input id="confirm_password" type="password" {...register("confirm_password")} />
-              <FormFieldError message={errors.confirm_password?.message} showIcon={false} />
-            </div>
 
             {/* Bouton de soumission */}
-            <Button type="submit" className="w-full mt-6" disabled={loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Inscription..." : "S'inscrire"}
             </Button>
           </div>

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Building2, Users, Plus, ArrowRight, ArrowLeft, CheckCircle, AlertTriangle } from "lucide-react";
 import { createOrganisation, joinOrganisation } from "@/lib/api";
+import { useUserRole } from "@/hooks/useUserRole";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,10 +26,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+  InputOTPSeparator,
+} from "@/components/ui/input-otp";
 
 // Schémas de validation
 const joinOrganisationSchema = z.object({
-  invitation_code: z.string().min(1, "Le code d'invitation est requis"),
+  invitation_code: z.string().length(6, "Le code d'invitation doit contenir 6 caractères"),
 });
 
 const createOrganisationSchema = z.object({
@@ -59,9 +66,11 @@ const organisationTypes = [
 
 export function OrganisationOnboardingForm({ className, isRequired = false, ...props }) {
   const router = useRouter();
+  const { role } = useUserRole();
   const [mode, setMode] = useState(null); // "join" ou "create"
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1);
+  const [otpValue, setOtpValue] = useState("");
 
   // Form pour rejoindre une organisation
   const joinForm = useForm({
@@ -79,15 +88,18 @@ export function OrganisationOnboardingForm({ className, isRequired = false, ...p
       await joinOrganisation(data.invitation_code);
       toast.success("Vous avez rejoint l'organisation avec succès!");
       
+      // Déterminer la redirection selon le rôle
+      const defaultRedirect = role === "AGENT" ? "/dashboard" : "/athletes";
+      
       // Redirection selon le contexte
       if (isRequired) {
-        // Si l'onboarding était requis, rediriger vers explore pour les collaborateurs
+        // Si l'onboarding était requis, rediriger selon le rôle
         toast.success("Onboarding complété ! Bienvenue sur la plateforme.", { duration: 3000 });
         setTimeout(() => {
-          router.push("/explore");
+          router.push(defaultRedirect);
         }, 1500);
       } else {
-        router.push("/dashboard");
+        router.push(defaultRedirect);
       }
     } catch (error) {
       toast.error(error.message || "Erreur lors de la connexion à l'organisation");
@@ -102,15 +114,18 @@ export function OrganisationOnboardingForm({ className, isRequired = false, ...p
       await createOrganisation(data);
       toast.success("Organisation créée avec succès!");
       
+      // Déterminer la redirection selon le rôle
+      const defaultRedirect = role === "AGENT" ? "/dashboard" : "/athletes";
+      
       // Redirection selon le contexte
       if (isRequired) {
-        // Si l'onboarding était requis, rediriger vers explore pour les collaborateurs
+        // Si l'onboarding était requis, rediriger selon le rôle
         toast.success("Onboarding complété ! Bienvenue sur la plateforme.", { duration: 3000 });
         setTimeout(() => {
-          router.push("/explore");
+          router.push(defaultRedirect);
         }, 1500);
       } else {
-        router.push("/dashboard");
+        router.push(defaultRedirect);
       }
     } catch (error) {
       toast.error(error.message || "Erreur lors de la création de l'organisation");
@@ -277,28 +292,53 @@ export function OrganisationOnboardingForm({ className, isRequired = false, ...p
                   Code d&apos;invitation
                 </CardTitle>
                 <CardDescription>
-                  Entrez le code d&apos;invitation fourni par votre organisation
+                  Entrez le code d&apos;invitation à 6 caractères fourni par votre organisation
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={joinForm.handleSubmit(handleJoinOrganisation)}>
-                  <div className="grid gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="invitation_code">Code d&apos;invitation</Label>
-                      <Input
-                        id="invitation_code"
-                        placeholder="Ex: ABC123DEF456"
-                        className="text-center text-lg font-mono tracking-wider"
-                        {...joinForm.register("invitation_code")}
-                      />
+                  <div className="grid gap-6">
+                    <div className="grid gap-4">
+                      <Label htmlFor="invitation_code" className="text-center">
+                        Code d&apos;invitation
+                      </Label>
+                      <div className="flex justify-center">
+                        <InputOTP
+                          maxLength={6}
+                          value={otpValue}
+                          onChange={(value) => {
+                            setOtpValue(value);
+                            joinForm.setValue("invitation_code", value, { shouldValidate: true });
+                          }}
+                        >
+                          <InputOTPGroup>
+                            <InputOTPSlot index={0} />
+                            <InputOTPSlot index={1} />
+                            <InputOTPSlot index={2} />
+                          </InputOTPGroup>
+                          <InputOTPSeparator />
+                          <InputOTPGroup>
+                            <InputOTPSlot index={3} />
+                            <InputOTPSlot index={4} />
+                            <InputOTPSlot index={5} />
+                          </InputOTPGroup>
+                        </InputOTP>
+                      </div>
                       {joinForm.formState.errors.invitation_code && (
-                        <p className="text-red-500 text-sm">
+                        <p className="text-red-500 text-sm text-center">
                           {joinForm.formState.errors.invitation_code.message}
                         </p>
                       )}
+                      <p className="text-xs text-muted-foreground text-center">
+                        Le code est sensible à la casse (majuscules/minuscules)
+                      </p>
                     </div>
 
-                    <Button type="submit" className="w-full" disabled={loading}>
+                    <Button 
+                      type="submit" 
+                      className="w-full" 
+                      disabled={loading || otpValue.length !== 6}
+                    >
                       {loading ? "Vérification..." : "Rejoindre l'organisation"}
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>

@@ -1,26 +1,14 @@
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner"
 import { ThemeProvider } from "@/components/theme-provider";
 import "./styles/globals.css";
 
 /**
- * Load the Mona Sans font from local files.
- *
- * This variable font includes both the normal and italic styles.
- * Adjust the file paths if needed according to the public folder structure.
+ * Load the Inter font from Google Fonts.
  */
-const monaSans = localFont({
-  src: [
-    {
-      path: "/fonts/MonaSans-VariableFont_wdth,wght.ttf",
-      style: "normal",
-    },
-    {
-      path: "/fonts/MonaSans-Italic-VariableFont_wdth,wght.ttf",
-      style: "italic",
-    },
-  ],
-  variable: "--font-mona-sans",
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 /**
@@ -47,8 +35,8 @@ export const metadata = {
  */
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${monaSans.variable} antialiased`}>
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
+      <body className={`${inter.variable} antialiased`}>
         {/* ThemeProvider manages the application's theme (light/dark/system) */}
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           <Toaster />

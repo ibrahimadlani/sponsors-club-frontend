@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+console.log('[Middleware] Module loaded');
+
 // Liste des routes publiques (accessibles sans connexion)
 const PUBLIC_PATHS = [
 	'/',
@@ -16,7 +18,7 @@ const PUBLIC_PATHS = [
 	'/forgot-password',
 ];
 
-// Préfixes publics (ex: /athletes/slug)
+// Préfixes publics (ex: /blog/slug)
 const PUBLIC_PREFIXES = ['/blog', '/guides', '/faq', '/contact'];
 
 const ACCESS_COOKIE = 'accessToken';
@@ -43,6 +45,8 @@ function parseJwt(token: string) {
 export function middleware(req: NextRequest) {
 	const { pathname } = req.nextUrl;
 
+	console.log('[Middleware] Checking path:', pathname);
+
 	// Autoriser les assets statiques et Next internals
 	if (
 		pathname.startsWith('/_next') ||
@@ -64,8 +68,10 @@ export function middleware(req: NextRequest) {
 
 	// Vérifier le token d'accès
 	const accessToken = req.cookies.get(ACCESS_COOKIE)?.value;
+	console.log('[Middleware] Access token:', accessToken ? 'EXISTS' : 'MISSING');
 	if (!accessToken) {
 		// Redirige vers login avec next param
+		console.log('[Middleware] Redirecting to /login (no token)');
 		const loginUrl = req.nextUrl.clone();
 		loginUrl.pathname = '/login';
 		loginUrl.searchParams.set('next', pathname);
@@ -141,7 +147,15 @@ export function middleware(req: NextRequest) {
 
 export const config = {
 	matcher: [
-		'/((?!_next|static|favicon|images).*)',
+		/*
+		 * Match all request paths except for the ones starting with:
+		 * - _next/static (static files)
+		 * - _next/image (image optimization files)
+		 * - favicon.ico (favicon file)
+		 * - images (public images)
+		 * - static (public static files)
+		 */
+		'/((?!_next/static|_next/image|favicon.ico|images|static).*)',
 	],
 };
 

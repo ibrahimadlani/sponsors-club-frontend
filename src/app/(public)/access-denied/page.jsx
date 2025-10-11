@@ -21,9 +21,9 @@ export default function AccessDeniedPage() {
       return;
     }
 
-    // Si l'utilisateur est un collaborateur, rediriger vers explore
+    // Si l'utilisateur est un collaborateur, rediriger vers athletes
     if (user.account_type === "COLLABORATOR") {
-      router.push("/explore");
+      router.push("/athletes");
       return;
     }
   }, [user, router]);

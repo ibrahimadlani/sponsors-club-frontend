@@ -19,8 +19,7 @@ import {
   User,
 } from "lucide-react";
 
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
-import PageHeader from "@/components/page-header";
+import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter, usePathname } from "next/navigation";
@@ -102,13 +101,9 @@ export default function MessagesPage() {
   if (!user) return null;
 
   return (
-    <SidebarProvider>
-      <SidebarInset className="min-h-screen flex flex-col">
-        {/* App header */}
-        <PageHeader user={user} />
-
-        {/* Main content */}
-        <div className="max-w-6xl mx-auto px-4 py-6 flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
+    <SidebarInset className="min-h-screen flex flex-col">
+      {/* Main content */}
+      <div className="max-w-6xl mx-auto px-4 py-6 flex-1 grid grid-cols-1 md:grid-cols-3 gap-4 w-full">
           {/* Conversations column */}
           <aside className="md:col-span-1">
             <div className="bg-white dark:bg-zinc-900 rounded-xl shadow border border-transparent p-4">
@@ -250,11 +245,11 @@ export default function MessagesPage() {
             </div>
           </section>
         </div>
-      </SidebarInset>
-      {/* Mobile sticky navigation/footer */}
-      <footer
-        className={"fixed bottom-5 left-2.5 right-2.5 w-auto max-w-[560px] mx-auto py-3 bg-background text-center border-t md:hidden px-7 rounded-full shadow-xl"}
-      >
+
+        {/* Mobile sticky navigation/footer */}
+        <footer
+          className={"fixed bottom-5 left-2.5 right-2.5 w-auto max-w-[560px] mx-auto py-3 bg-background text-center border-t md:hidden px-7 rounded-full shadow-xl"}
+        >
         {user ? (
           <div className="flex justify-between w-full">
             <Link href="/explorer" className={`flex flex-col items-center gap-0.5 font-medium antialiased w-full max-w-[56px] ${isExplorer ? 'text-pink-500' : 'opacity-70'}`}>
@@ -280,6 +275,6 @@ export default function MessagesPage() {
           </div>
         ) : null}
       </footer>
-    </SidebarProvider>
+    </SidebarInset>
   );
 }
