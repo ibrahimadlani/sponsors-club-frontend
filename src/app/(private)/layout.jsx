@@ -6,6 +6,7 @@ import AppHeader from "@/components/app-header";
 import Footer from "@/components/footer";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { UnreadMessagesProvider } from "@/contexts/UnreadMessagesContext";
 
 /**
  * PrivateLayout Component
@@ -27,7 +28,6 @@ export default function PrivateLayout({ children }) {
 
   useEffect(() => {
     // Vérifier si l'utilisateur a un token
-    console.log(user)
     const accessToken = document.cookie
       .split('; ')
       .find(row => row.startsWith('accessToken='));
@@ -55,14 +55,16 @@ export default function PrivateLayout({ children }) {
   }, [user, loading, pathname, router]);
 
   return (
-    <SidebarProvider>
-      <div className="flex flex-col min-h-screen w-full">
-        <AppHeader />
-        <main className="flex-1">
-          {children}
-        </main>
-        <Footer />
-      </div>
-    </SidebarProvider>
+    <UnreadMessagesProvider>
+      <SidebarProvider>
+        <div className="flex flex-col min-h-screen w-full">
+          <AppHeader />
+          <main className="flex-1">
+            {children}
+          </main>
+          <Footer />
+        </div>
+      </SidebarProvider>
+    </UnreadMessagesProvider>
   );
 }

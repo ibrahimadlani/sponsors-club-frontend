@@ -1236,4 +1236,238 @@ export const payments = {
 export const users = {
   getMe: fetchUserProfile,
   updateMe: updateProfile,
+  
+  /**
+   * Get user roles
+   * @returns {Promise<Object>} User roles data
+   */
+  getMyRoles: async () => {
+    return authenticatedFetch(`/users/me/roles/`);
+  },
+  
+  /**
+   * Get user entitlements and feature access
+   * @returns {Promise<Object>} User entitlements data
+   */
+  getMyEntitlements: async () => {
+    return authenticatedFetch(`/users/me/entitlements/`);
+  },
+};
+
+/**
+ * Messaging API methods
+ * Provides methods for thread and message operations
+ */
+export const messaging = {
+  /**
+   * Get all threads for the current user
+   * @param {Object} params - Query parameters
+   * @param {number} params.page - Page number
+   * @param {number} params.page_size - Number of results per page
+   * @returns {Promise<Object>} Paginated threads response
+   */
+  getThreads: async ({ page = 1, page_size = 20 } = {}) => {
+    const params = new URLSearchParams({ page: page.toString(), page_size: page_size.toString() });
+    return authenticatedFetch(`/messaging/threads/?${params}`);
+  },
+
+  /**
+   * Create a new messaging thread
+   * @param {Object} data - Thread creation data
+   * @param {string} data.agent_id - Agent ID (optional)
+   * @param {string} data.athlete_id - Athlete ID (optional)
+   * @param {string} data.collaborator_id - Collaborator ID (optional)
+   * @returns {Promise<Object>} Created thread
+   */
+  createThread: async (data) => {
+    return authenticatedFetch(`/messaging/threads/`, {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  /**
+   * Get messages for a specific thread
+   * @param {string} threadId - Thread UUID
+   * @returns {Promise<Array>} Array of messages
+   */
+  getMessages: async (threadId) => {
+    return authenticatedFetch(`/messaging/threads/${threadId}/messages/`);
+  },
+
+  /**
+   * Send a message to a thread
+   * @param {string} threadId - Thread UUID
+   * @param {Object} data - Message data
+   * @param {string} data.content - Message content
+   * @returns {Promise<Object>} Created message
+   */
+  sendMessage: async (threadId, data) => {
+    return authenticatedFetch(`/messaging/threads/${threadId}/messages/`, {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  /**
+   * Mark a message as read
+   * @param {string} messageId - Message UUID
+   * @param {boolean} isRead - Read status
+   * @returns {Promise<Object>} Updated message
+   */
+  markMessageAsRead: async (messageId, isRead = true) => {
+    return authenticatedFetch(`/messaging/messages/${messageId}/read/`, {
+      method: "PATCH",
+      body: { is_read: isRead },
+    });
+  },
+};
+
+/**
+ * Notifications API methods
+ * Provides methods for notification management
+ */
+export const notifications = {
+  /**
+   * Get notifications for the authenticated user
+   * @param {Object} params - Query parameters
+   * @param {number} params.page - Page number
+   * @param {number} params.page_size - Number of results per page
+   * @returns {Promise<Object>} Paginated notifications response
+   */
+  getNotifications: async ({ page = 1, page_size = 20 } = {}) => {
+    const params = new URLSearchParams({ page: page.toString(), page_size: page_size.toString() });
+    return authenticatedFetch(`/notifications/?${params}`);
+  },
+
+  /**
+   * Mark a notification as read/unread
+   * @param {string} notificationId - Notification UUID
+   * @param {boolean} isRead - Read status
+   * @returns {Promise<Object>} Updated notification
+   */
+  markAsRead: async (notificationId, isRead = true) => {
+    return authenticatedFetch(`/notifications/${notificationId}/read/`, {
+      method: "PATCH",
+      body: { is_read: isRead },
+    });
+  },
+};
+
+/**
+ * Organisations API methods
+ * Provides methods for organisation management, collaborators, and invitations
+ */
+export const organisations = {
+  /**
+   * Get all organisations for the current user
+   * @returns {Promise<Array>} Array of organisations
+   */
+  getOrganisations: async () => {
+    return fetchOrganisations();
+  },
+
+  /**
+   * Get a specific organisation by ID
+   * @param {string} organisationId - Organisation UUID
+   * @returns {Promise<Object>} Organisation details
+   */
+  getOrganisation: async (organisationId) => {
+    return fetchOrganisation(organisationId);
+  },
+
+  /**
+   * Create a new organisation
+   * @param {Object} data - Organisation data
+   * @returns {Promise<Object>} Created organisation
+   */
+  createOrganisation: async (data) => {
+    return createOrganisation(data);
+  },
+
+  /**
+   * Update an organisation
+   * @param {string} organisationId - Organisation UUID
+   * @param {Object} data - Organisation data to update
+   * @returns {Promise<Object>} Updated organisation
+   */
+  updateOrganisation: async (organisationId, data) => {
+    return updateOrganisation(organisationId, data);
+  },
+
+  /**
+   * Join an organisation with an invitation code
+   * @param {string} invitationCode - Invitation code
+   * @returns {Promise<Object>} Organisation joined
+   */
+  joinOrganisation: async (invitationCode) => {
+    return joinOrganisation(invitationCode);
+  },
+
+  /**
+   * Get collaborators for an organisation
+   * @param {string} organisationId - Organisation UUID
+   * @returns {Promise<Array>} Array of collaborators
+   */
+  getCollaborators: async (organisationId) => {
+    return fetchOrganisationCollaborators(organisationId);
+  },
+
+  /**
+   * Add a collaborator to an organisation
+   * @param {string} organisationId - Organisation UUID
+   * @param {Object} data - Collaborator data
+   * @param {string} data.user_id - User ID to add as collaborator
+   * @returns {Promise<Object>} Added collaborator
+   */
+  addCollaborator: async (organisationId, data) => {
+    return authenticatedFetch(`/organisations/${organisationId}/collaborators/add/`, {
+      method: "POST",
+      body: data,
+    });
+  },
+
+  /**
+   * Remove a collaborator from an organisation
+   * @param {string} collaboratorId - Collaborator UUID
+   * @returns {Promise<void>}
+   */
+  removeCollaborator: async (collaboratorId) => {
+    return authenticatedFetch(`/organisations/collaborators/${collaboratorId}/`, {
+      method: "DELETE",
+    });
+  },
+
+  /**
+   * Get invitation codes for an organisation
+   * @param {string} organisationId - Organisation UUID
+   * @returns {Promise<Array>} Array of invitation codes
+   */
+  getInvites: async (organisationId) => {
+    return fetchOrganisationInvites(organisationId);
+  },
+
+  /**
+   * Create a new invitation code
+   * @param {string} organisationId - Organisation UUID
+   * @param {Object} data - Invitation data (optional)
+   * @returns {Promise<Object>} Created invitation
+   */
+  createInvite: async (organisationId, data = {}) => {
+    return createOrganisationInvite(organisationId, data);
+  },
+
+  /**
+   * Transfer organisation ownership
+   * @param {string} organisationId - Organisation UUID
+   * @param {Object} data - Transfer data
+   * @param {string} data.new_owner_user_id - New owner user ID
+   * @returns {Promise<Object>} Updated organisation
+   */
+  transferOwnership: async (organisationId, data) => {
+    return authenticatedFetch(`/organisations/${organisationId}/transfer-ownership/`, {
+      method: "POST",
+      body: data,
+    });
+  },
 };

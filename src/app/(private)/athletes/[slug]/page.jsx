@@ -1,16 +1,17 @@
 "use client";
-import { getAthleteBySlug, followAthlete, unfollowAthlete } from "@/lib/api";
+import { getAthleteBySlug, followAthlete, unfollowAthlete, messaging } from "@/lib/api";
 
 // Page: Athlete detail
 // Shows athlete header summary, media carousel, stats and charts.
 
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { BadgeCheck, Instagram, Facebook, Youtube, MapIcon, Check, ThumbsUp, User as UserIcon } from "lucide-react";
 import FollowerGrowthChart from "@/components/bar-chart";
 import RadarChartComponent from "@/components/radar-chart";
 import { formatNumber, formatPriceEUR } from "@/lib/utils";
+import { toast } from "sonner";
 const safeFormatPrice = (value) => {
   if (typeof formatPriceEUR === 'function') return formatPriceEUR(value);
   try {
@@ -370,6 +371,7 @@ export default function AthletePage() {
   };
   const { user } = useCurrentUser();
   const { slug } = useParams();
+  const router = useRouter();
   const [athlete, setAthlete] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openEventDialog, setOpenEventDialog] = useState(false);
@@ -378,6 +380,58 @@ export default function AthletePage() {
   const [isFollowed, setIsFollowed] = useState(false);
   const [followAnim, setFollowAnim] = useState(false);
   const [activeTab, setActiveTab] = useState('profil');
+  const [messageLoading, setMessageLoading] = useState(false);
+
+  /**
+   * Handle message button click
+   * Creates a new thread with the athlete's agent or opens existing thread
+   */
+  const handleMessageClick = async () => {
+    if (!athlete) {
+      toast.error("Impossible de contacter cet athlète");
+      return;
+    }
+
+    // Try to get agent ID from different possible fields
+    const agentId = athlete.agent?.id || athlete.agent_id || athlete.created_by;
+    
+    if (!agentId) {
+      toast.error("Cet athlète n'a pas d'agent associé");
+      return;
+    }
+
+    setMessageLoading(true);
+    try {
+      // Get all threads to check if one exists with this agent
+      const threadsResponse = await messaging.getThreads();
+      const threads = threadsResponse.results || [];
+      
+      // Find existing thread with this agent
+      const existingThread = threads.find(thread => 
+        thread.agent?.id === agentId || 
+        thread.agent_id === agentId
+      );
+
+      if (existingThread) {
+        // Thread exists, redirect to messages with this thread
+        router.push(`/messages?thread=${existingThread.id}`);
+      } else {
+        // Create new thread with the agent
+        const newThread = await messaging.createThread({
+          agent_id: agentId,
+          athlete_id: athlete.id,
+        });
+        
+        // Redirect to messages with the new thread
+        router.push(`/messages?thread=${newThread.id}`);
+      }
+    } catch (error) {
+      console.error("Error creating/opening thread:", error);
+      toast.error("Impossible d'ouvrir la conversation");
+    } finally {
+      setMessageLoading(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -399,6 +453,7 @@ export default function AthletePage() {
                 : [a.image1, a.image2, a.image3].filter(Boolean),
           }
         : null;
+      
       setAthlete(normalized);
       setIsFollowed(Boolean(normalized?.is_followed));
       setLoading(false);
@@ -446,6 +501,8 @@ export default function AthletePage() {
             isFollowed={isFollowed}
             onToggleFollow={handleToggleFollow}
             followAnimating={followAnim}
+            onMessageClick={handleMessageClick}
+            messageLoading={messageLoading}
           />
 
           {/* Tabs: Profil / Audience & visibilité / Image & valeurs */}

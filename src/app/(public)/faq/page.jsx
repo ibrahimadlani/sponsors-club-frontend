@@ -133,7 +133,7 @@ export default function FAQPage() {
       <div className="flex min-h-svh flex-col bg-background text-foreground">
         <AppHeader />
         <main className="flex-1">
-          <div className="mx-auto max-w-5xl px-6 py-12 md:py-20">
+          <div className="mx-auto max-w-7xl px-6 py-12 md:py-20">
             {/* Hero Header */}
             <header className="space-y-6 text-center">
               <Badge variant="outline" className="mx-auto w-fit">

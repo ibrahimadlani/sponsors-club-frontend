@@ -7,8 +7,9 @@ import * as z from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
-import { User, Trophy, ArrowRight, ArrowLeft, CheckCircle, Calendar, MapPin, Globe, Camera, FileText } from "lucide-react";
+import { User, Trophy, ArrowRight, ArrowLeft, CheckCircle, Calendar, MapPin, Globe, Camera, FileText, Briefcase, UserCircle } from "lucide-react";
 import { fetchSports, fetchSportDisciplines, createAthlete } from "@/lib/api";
+import { userEndpoints } from "@/lib/endpoints";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -25,14 +26,20 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 // Schéma de validation pour créer un athlète
 const createAthleteSchema = z.object({
+  is_self_represented: z.boolean().default(false),
   sport_id: z.string().uuid("Veuillez sélectionner un sport"),
   full_name: z.string().min(1, "Le nom complet est requis").max(255, "Le nom ne peut pas dépasser 255 caractères"),
   birth_date: z.string().min(1, "La date de naissance est requise"),
-  nationality: z.string().min(1, "La nationalité est requise").max(100, "La nationalité ne peut pas dépasser 100 caractères"),
-  country: z.string().max(100, "Le pays ne peut pas dépasser 100 caractères").optional(),
+  nationality: z.string().min(2, "La nationalité est requise").max(2, "Code ISO 3166-1 alpha-2 requis (ex: FR)"),
+  country: z.string().length(2, "Code ISO 3166-1 alpha-2 requis (ex: FR)").optional().or(z.literal("")),
   city: z.string().max(255, "La ville ne peut pas dépasser 255 caractères").optional(),
   bio: z.string().optional(),
   discipline_ids: z.array(z.string().uuid()).optional(),
@@ -49,14 +56,18 @@ const createAthleteSchema = z.object({
 export function AthleteOnboardingForm({ className, ...props }) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0); // Commencer à 0 pour la sélection
   const [sports, setSports] = useState([]);
   const [selectedSport, setSelectedSport] = useState(null);
   const [disciplines, setDisciplines] = useState([]);
+  const [isSelfRepresented, setIsSelfRepresented] = useState(null); // null au départ
+  const [nationality, setNationality] = useState(""); // ISO 3166-1 alpha-2
+  const [country, setCountry] = useState(""); // ISO 3166-1 alpha-2
 
   const form = useForm({
     resolver: zodResolver(createAthleteSchema),
     defaultValues: {
+      is_self_represented: false,
       social_links: {
         instagram: "",
         twitter: "",
@@ -91,6 +102,64 @@ export function AthleteOnboardingForm({ className, ...props }) {
 
     loadSports();
   }, []);
+
+  // Synchroniser isSelfRepresented avec le formulaire
+  useEffect(() => {
+    form.setValue("is_self_represented", isSelfRepresented, { shouldValidate: true });
+  }, [isSelfRepresented, form]);
+
+  // Synchroniser nationality avec le formulaire
+  useEffect(() => {
+    if (nationality) {
+      form.setValue("nationality", nationality, { shouldValidate: true });
+    }
+  }, [nationality, form]);
+
+  // Synchroniser country avec le formulaire
+  useEffect(() => {
+    if (country) {
+      form.setValue("country", country, { shouldValidate: true });
+    }
+  }, [country, form]);
+
+  // 🎯 Pré-remplir le formulaire avec les données utilisateur si athlète auto-représenté
+  useEffect(() => {
+    const prefillUserData = async () => {
+      if (isSelfRepresented === true) {
+        try {
+          const userData = await userEndpoints.me();
+          
+          // Pré-remplir le nom complet
+          if (userData.first_name || userData.last_name) {
+            const fullName = `${userData.first_name || ""} ${userData.last_name || ""}`.trim();
+            if (fullName) {
+              form.setValue("full_name", fullName);
+            }
+          }
+          
+          // Pré-remplir la date de naissance
+          if (userData.date_of_birth) {
+            form.setValue("birth_date", userData.date_of_birth);
+          }
+          
+          // Pré-remplir le pays et la nationalité avec codes ISO
+          if (userData.country) {
+            setCountry(userData.country); // Code ISO pour country
+            setNationality(userData.country); // Code ISO pour nationality (même code)
+          }
+          
+          toast.success("Vos informations ont été pré-remplies !", { duration: 3000 });
+        } catch (error) {
+          console.error("Erreur lors du chargement des données utilisateur:", error);
+          // Pas de toast d'erreur pour ne pas perturber l'UX
+        }
+      }
+    };
+
+    if (isSelfRepresented === true) {
+      prefillUserData();
+    }
+  }, [isSelfRepresented, form]);
 
   // Charger les disciplines quand un sport est sélectionné
   useEffect(() => {
@@ -140,14 +209,34 @@ export function AthleteOnboardingForm({ className, ...props }) {
   };
 
   const nextStep = async () => {
+    if (step === 0) {
+      // Vérifier qu'une option a été sélectionnée
+      if (isSelfRepresented === null) {
+        toast.error("Veuillez sélectionner votre profil");
+        return;
+      }
+      setStep(step + 1);
+      return;
+    }
+    
     if (step === 1) {
-      // Valider les champs requis du step 1
-      const isValid = await form.trigger(["full_name", "sport_id", "birth_date", "nationality"]);
+      // Valider les champs requis du step 1 (informations de base uniquement)
+      const isValid = await form.trigger(["full_name", "birth_date", "nationality"]);
       if (!isValid) {
         toast.error("Veuillez remplir tous les champs obligatoires");
         return;
       }
     }
+    
+    if (step === 2) {
+      // Valider le sport principal (requis au step 2)
+      const isValid = await form.trigger(["sport_id"]);
+      if (!isValid) {
+        toast.error("Veuillez sélectionner un sport");
+        return;
+      }
+    }
+    
     setStep(step + 1);
   };
 
@@ -155,44 +244,147 @@ export function AthleteOnboardingForm({ className, ...props }) {
 
   return (
     <div className={cn("flex flex-col gap-6", className)} {...props}>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="text-center"
-      >
-        <h1 className="text-3xl font-bold mb-2">Créer votre premier athlète</h1>
-        <p className="text-muted-foreground">
-          Configurez le profil de votre athlète pour commencer
-        </p>
-        <div className="flex justify-center mt-4">
-          <div className="flex items-center space-x-2">
-            {[1, 2, 3, 4].map((stepNumber) => (
-              <div key={stepNumber} className="flex items-center">
-                <div
-                  className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
-                    step >= stepNumber
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {stepNumber}
-                </div>
-                {stepNumber < 4 && (
+      {/* Masquer le header et le stepper sur le step 0 */}
+      {step > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center"
+        >
+          <h1 className="text-3xl font-bold mb-2">
+            {isSelfRepresented 
+              ? "Complétez vos informations personnelles" 
+              : "Créer votre premier athlète"}
+          </h1>
+          <p className="text-muted-foreground">
+            {isSelfRepresented
+              ? "Renseignez vos informations sportives pour créer votre profil d'athlète"
+              : "Configurez le profil de l'athlète que vous représentez"}
+          </p>
+          <div className="flex justify-center mt-4">
+            <div className="flex items-center space-x-2">
+              {[1, 2, 3, 4].map((stepNumber) => (
+                <div key={stepNumber} className="flex items-center">
                   <div
                     className={cn(
-                      "w-12 h-0.5 mx-2",
-                      step > stepNumber ? "bg-primary" : "bg-muted"
+                      "w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                      step >= stepNumber
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground"
                     )}
-                  />
-                )}
-              </div>
-            ))}
+                  >
+                    {stepNumber}
+                  </div>
+                  {stepNumber < 4 && (
+                    <div
+                      className={cn(
+                        "w-12 h-0.5 mx-2",
+                        step > stepNumber ? "bg-primary" : "bg-muted"
+                      )}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
 
+      {/* Step 0 : Sélection Agent/Athlète avec gros boutons */}
+      {step === 0 && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.5 }}
+          className="w-full"
+        >
+          <div className="text-center mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              Bienvenue !
+            </h1>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Pour commencer, dites-nous qui vous êtes
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+            {/* Bouton Agent */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setIsSelfRepresented(false);
+                nextStep();
+              }}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl border-2 p-8 md:p-12",
+                "transition-all duration-300 hover:shadow-2xl",
+                "bg-gradient-to-br from-background to-muted/30",
+                "hover:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20",
+                isSelfRepresented === false && "border-primary ring-4 ring-primary/20"
+              )}
+            >
+              <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+                <div className="p-6 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <Briefcase className="w-16 h-16 md:w-20 md:h-20 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">Agent Sportif</h2>
+                  <p className="text-muted-foreground text-base md:text-lg">
+                    Je représente un ou plusieurs athlètes et gère leur carrière professionnelle
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-primary font-medium">
+                  <span>Continuer en tant qu&apos;agent</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              {/* Effet de fond animé */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.button>
+
+            {/* Bouton Athlète */}
+            <motion.button
+              type="button"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => {
+                setIsSelfRepresented(true);
+                nextStep();
+              }}
+              className={cn(
+                "group relative overflow-hidden rounded-2xl border-2 p-8 md:p-12",
+                "transition-all duration-300 hover:shadow-2xl",
+                "bg-gradient-to-br from-background to-muted/30",
+                "hover:border-primary focus:outline-none focus:ring-4 focus:ring-primary/20",
+                isSelfRepresented === true && "border-primary ring-4 ring-primary/20"
+              )}
+            >
+              <div className="relative z-10 flex flex-col items-center text-center space-y-6">
+                <div className="p-6 rounded-full bg-primary/10 group-hover:bg-primary/20 transition-colors">
+                  <UserCircle className="w-16 h-16 md:w-20 md:h-20 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-bold mb-3">Athlète</h2>
+                  <p className="text-muted-foreground text-base md:text-lg">
+                    Je suis un athlète et je souhaite gérer moi-même ma carrière et mes opportunités
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-primary font-medium">
+                  <span>Continuer en tant qu&apos;athlète</span>
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </div>
+              </div>
+              {/* Effet de fond animé */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </motion.button>
+          </div>
+        </motion.div>
+      )}
+
+      {step > 0 && (
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -202,10 +394,18 @@ export function AthleteOnboardingForm({ className, ...props }) {
             {step === 4 && <><FileText className="h-5 w-5" />Biographie et finalisation</>}
           </CardTitle>
           <CardDescription>
-            {step === 1 && "Renseignez les informations de base de votre athlète"}
-            {step === 2 && "Sélectionnez le sport principal et les disciplines"}
-            {step === 3 && "Ajoutez les comptes sur les réseaux sociaux (optionnel)"}
-            {step === 4 && "Complétez le profil avec une biographie"}
+            {step === 1 && (isSelfRepresented 
+              ? "Renseignez vos informations de base" 
+              : "Renseignez les informations de base de l'athlète")}
+            {step === 2 && (isSelfRepresented
+              ? "Sélectionnez votre sport principal et vos disciplines"
+              : "Sélectionnez le sport principal et les disciplines de l'athlète")}
+            {step === 3 && (isSelfRepresented
+              ? "Ajoutez vos comptes sur les réseaux sociaux (optionnel)"
+              : "Ajoutez les comptes de l'athlète sur les réseaux sociaux (optionnel)")}
+            {step === 4 && (isSelfRepresented
+              ? "Complétez votre profil avec une biographie"
+              : "Complétez le profil de l'athlète avec une biographie")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -219,8 +419,19 @@ export function AthleteOnboardingForm({ className, ...props }) {
                   exit={{ opacity: 0, x: -20 }}
                   className="grid gap-4"
                 >
+                  {/* Message de confirmation du choix */}
+                  <div className="mb-2 p-4 rounded-lg bg-primary/5 border border-primary/20">
+                    <p className="text-sm text-center font-medium">
+                      {isSelfRepresented 
+                        ? "✨ Vous créez votre propre profil d'athlète - Vos informations ont été pré-remplies" 
+                        : "👔 Vous créez le profil d'un athlète que vous représentez"}
+                    </p>
+                  </div>
+
                   <div className="grid gap-2">
-                    <Label htmlFor="full_name">Nom complet *</Label>
+                    <Label htmlFor="full_name">
+                      {isSelfRepresented ? "Votre nom complet *" : "Nom complet de l'athlète *"}
+                    </Label>
                     <Input
                       id="full_name"
                       placeholder="Ex: Marie Dupont"
@@ -235,7 +446,9 @@ export function AthleteOnboardingForm({ className, ...props }) {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="birth_date">Date de naissance *</Label>
+                      <Label htmlFor="birth_date">
+                        {isSelfRepresented ? "Votre date de naissance *" : "Date de naissance de l'athlète *"}
+                      </Label>
                       <Input
                         id="birth_date"
                         type="date"
@@ -250,12 +463,40 @@ export function AthleteOnboardingForm({ className, ...props }) {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="nationality">Nationalité *</Label>
-                      <Input
-                        id="nationality"
-                        placeholder="Ex: Française"
-                        {...form.register("nationality")}
-                      />
+                      <Label htmlFor="nationality">
+                        {isSelfRepresented ? "Votre nationalité *" : "Nationalité de l'athlète *"}
+                      </Label>
+                      <Select value={nationality} onValueChange={setNationality}>
+                        <SelectTrigger id="nationality">
+                          <SelectValue placeholder="Sélectionnez une nationalité" />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          <SelectItem value="FR">🇫🇷 Française</SelectItem>
+                          <SelectItem value="BE">🇧🇪 Belge</SelectItem>
+                          <SelectItem value="CH">🇨🇭 Suisse</SelectItem>
+                          <SelectItem value="CA">🇨🇦 Canadienne</SelectItem>
+                          <SelectItem value="US">🇺🇸 Américaine</SelectItem>
+                          <SelectItem value="GB">🇬🇧 Britannique</SelectItem>
+                          <SelectItem value="DE">🇩🇪 Allemande</SelectItem>
+                          <SelectItem value="ES">🇪🇸 Espagnole</SelectItem>
+                          <SelectItem value="IT">🇮🇹 Italienne</SelectItem>
+                          <SelectItem value="PT">🇵🇹 Portugaise</SelectItem>
+                          <SelectItem value="NL">🇳🇱 Néerlandaise</SelectItem>
+                          <SelectItem value="LU">🇱🇺 Luxembourgeoise</SelectItem>
+                          <SelectItem value="BR">🇧🇷 Brésilienne</SelectItem>
+                          <SelectItem value="AR">🇦🇷 Argentine</SelectItem>
+                          <SelectItem value="MX">🇲🇽 Mexicaine</SelectItem>
+                          <SelectItem value="JP">🇯🇵 Japonaise</SelectItem>
+                          <SelectItem value="CN">🇨🇳 Chinoise</SelectItem>
+                          <SelectItem value="KR">🇰🇷 Sud-Coréenne</SelectItem>
+                          <SelectItem value="AU">🇦🇺 Australienne</SelectItem>
+                          <SelectItem value="NZ">🇳🇿 Néo-Zélandaise</SelectItem>
+                        </SelectContent>
+                      </Select>
                       {form.formState.errors.nationality && (
                         <p className="text-red-500 text-sm">
                           {form.formState.errors.nationality.message}
@@ -266,16 +507,46 @@ export function AthleteOnboardingForm({ className, ...props }) {
 
                   <div className="grid gap-4 md:grid-cols-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="country">Pays</Label>
-                      <Input
-                        id="country"
-                        placeholder="Ex: France"
-                        {...form.register("country")}
-                      />
+                      <Label htmlFor="country">
+                        {isSelfRepresented ? "Votre pays de résidence" : "Pays de résidence de l'athlète"}
+                      </Label>
+                      <Select value={country} onValueChange={setCountry}>
+                        <SelectTrigger id="country">
+                          <SelectValue placeholder="Sélectionnez un pays" />
+                        </SelectTrigger>
+                        <SelectContent 
+                          position="popper" 
+                          side="bottom"
+                          avoidCollisions={false}
+                        >
+                          <SelectItem value="FR">🇫🇷 France</SelectItem>
+                          <SelectItem value="BE">🇧🇪 Belgique</SelectItem>
+                          <SelectItem value="CH">🇨🇭 Suisse</SelectItem>
+                          <SelectItem value="CA">🇨🇦 Canada</SelectItem>
+                          <SelectItem value="US">🇺🇸 États-Unis</SelectItem>
+                          <SelectItem value="GB">🇬🇧 Royaume-Uni</SelectItem>
+                          <SelectItem value="DE">🇩🇪 Allemagne</SelectItem>
+                          <SelectItem value="ES">🇪🇸 Espagne</SelectItem>
+                          <SelectItem value="IT">🇮🇹 Italie</SelectItem>
+                          <SelectItem value="PT">🇵🇹 Portugal</SelectItem>
+                          <SelectItem value="NL">🇳🇱 Pays-Bas</SelectItem>
+                          <SelectItem value="LU">🇱🇺 Luxembourg</SelectItem>
+                          <SelectItem value="BR">🇧🇷 Brésil</SelectItem>
+                          <SelectItem value="AR">🇦🇷 Argentine</SelectItem>
+                          <SelectItem value="MX">🇲🇽 Mexique</SelectItem>
+                          <SelectItem value="JP">🇯🇵 Japon</SelectItem>
+                          <SelectItem value="CN">🇨🇳 Chine</SelectItem>
+                          <SelectItem value="KR">🇰🇷 Corée du Sud</SelectItem>
+                          <SelectItem value="AU">🇦🇺 Australie</SelectItem>
+                          <SelectItem value="NZ">🇳🇿 Nouvelle-Zélande</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="city">Ville</Label>
+                      <Label htmlFor="city">
+                        {isSelfRepresented ? "Votre ville" : "Ville de l'athlète"}
+                      </Label>
                       <Input
                         id="city"
                         placeholder="Ex: Paris"
@@ -295,7 +566,9 @@ export function AthleteOnboardingForm({ className, ...props }) {
                   className="grid gap-4"
                 >
                   <div className="grid gap-2">
-                    <Label htmlFor="sport_id">Sport principal *</Label>
+                    <Label htmlFor="sport_id">
+                      {isSelfRepresented ? "Votre sport principal *" : "Sport principal de l'athlète *"}
+                    </Label>
                     <Select 
                       onValueChange={(value) => {
                         form.setValue("sport_id", value);
@@ -325,7 +598,9 @@ export function AthleteOnboardingForm({ className, ...props }) {
 
                   {disciplines.length > 0 && (
                     <div className="grid gap-2">
-                      <Label>Disciplines spécialisées (optionnel)</Label>
+                      <Label>
+                        {isSelfRepresented ? "Vos disciplines spécialisées (optionnel)" : "Disciplines spécialisées de l'athlète (optionnel)"}
+                      </Label>
                       <div className="grid gap-2 max-h-40 overflow-y-auto p-2 border rounded-md">
                         {disciplines.map((discipline) => (
                           <label
@@ -450,15 +725,21 @@ export function AthleteOnboardingForm({ className, ...props }) {
                   className="grid gap-4"
                 >
                   <div className="grid gap-2">
-                    <Label htmlFor="bio">Biographie</Label>
+                    <Label htmlFor="bio">
+                      {isSelfRepresented ? "Votre biographie" : "Biographie de l'athlète"}
+                    </Label>
                     <Textarea
                       id="bio"
-                      placeholder="Racontez l'histoire de votre athlète, ses achievements, ses objectifs..."
+                      placeholder={isSelfRepresented 
+                        ? "Racontez votre histoire, vos achievements, vos objectifs..." 
+                        : "Racontez l'histoire de l'athlète, ses achievements, ses objectifs..."}
                       rows={6}
                       {...form.register("bio")}
                     />
                     <div className="text-xs text-muted-foreground">
-                      Décrivez le parcours sportif, les performances marquantes, les objectifs futurs...
+                      {isSelfRepresented 
+                        ? "Décrivez votre parcours sportif, vos performances marquantes, vos objectifs futurs..." 
+                        : "Décrivez le parcours sportif, les performances marquantes, les objectifs futurs..."}
                     </div>
                   </div>
 
@@ -508,6 +789,7 @@ export function AthleteOnboardingForm({ className, ...props }) {
           </form>
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

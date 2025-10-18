@@ -7,6 +7,7 @@ import PropTypes from "prop-types";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner"; // Pour les notifications toast
 import { userEndpoints } from "@/lib/endpoints";
+import { persistAuthTokens } from "@/lib/api"; // Import pour persister les tokens
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -24,13 +25,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
-import { HandCoins, Medal } from "lucide-react";
+import { Building2, Medal } from "lucide-react";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
 } from "@/components/ui/select";
 import FormFieldError from "@/components/forms/form-field-error";
 
@@ -133,9 +135,27 @@ export function RegisterForm({ className, ...props }) {
         account_type: data.account_type,
       };
 
+      // Inscription de l'utilisateur
       await userEndpoints.register(userData);
-      toast.success("Inscription réussie ! Un email de vérification vous a été envoyé.");
-      router.push("/login");
+      
+      // Connexion automatique après inscription réussie
+      const loginResponse = await userEndpoints.login({
+        email: data.email,
+        password: data.password,
+      });
+
+      // Stocker les tokens via la fonction persistAuthTokens (localStorage + cookies)
+      if (loginResponse?.access) {
+        persistAuthTokens(loginResponse.access, loginResponse.refresh);
+      }
+
+      toast.success("Inscription réussie ! Bienvenue !");
+      
+      // Attendre un court instant pour que le token soit bien configuré
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Redirection vers l'onboarding avec rechargement
+      window.location.href = "/onboarding";
     } catch (error) {
       const payload = error?.payload || {};
       const message =
@@ -219,19 +239,19 @@ export function RegisterForm({ className, ...props }) {
                   <Label htmlFor="email">Email</Label>
                   <ErrorIcon message={errors.email?.message} />
                 </div>
-                <Input id="email" type="email" {...register("email")} placeholder="m@example.com" />
+                <Input id="email" type="email" {...register("email")} />
                 <FormFieldError message={errors.email?.message} showIcon={false} className="min-h-[1rem]" />
               </div>
 
               {/* First Name & Last Name - 50% 50% */}
-              <div className="grid gap-2">
+              <div className="grid">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center mb-2">
                       <Label htmlFor="first_name">Prénom</Label>
                       <ErrorIcon message={errors.first_name?.message} />
                     </div>
-                    <Input id="first_name" {...register("first_name")} placeholder="Jean" />
+                    <Input id="first_name" {...register("first_name")} />
                   </div>
 
                   <div>
@@ -239,7 +259,7 @@ export function RegisterForm({ className, ...props }) {
                       <Label htmlFor="last_name">Nom</Label>
                       <ErrorIcon message={errors.last_name?.message} />
                     </div>
-                    <Input id="last_name" {...register("last_name")} placeholder="Dupont" />
+                    <Input id="last_name" {...register("last_name")} />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -257,7 +277,7 @@ export function RegisterForm({ className, ...props }) {
                 <Tabs value={accountType} onValueChange={setAccountType} className="w-full">
                   <TabsList className="w-full grid grid-cols-2">
                     <TabsTrigger value="AGENT" className="flex items-center gap-2">
-                      <HandCoins className="w-4 h-4" />
+                      <Building2 className="w-4 h-4" />
                       Sponsor
                     </TabsTrigger>
                     <TabsTrigger value="COLLABORATOR" className="flex items-center gap-2">
@@ -271,7 +291,7 @@ export function RegisterForm({ className, ...props }) {
               </div>
 
               {/* Phone Number - Indicatif + Téléphone */}
-              <div className="grid gap-2">
+              <div className="grid">
                 <div className="grid grid-cols-8 gap-3">
                   <div className="col-span-3">
                     <div className="flex items-center mb-2">
@@ -280,12 +300,38 @@ export function RegisterForm({ className, ...props }) {
                     </div>
                     <Select value={phoneCode} onValueChange={(val) => setPhoneCode(val)}>
                       <SelectTrigger className="h-9">
-                        <SelectValue placeholder="Sélectionner" />
+                        <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent position="popper" side="bottom" align="start" sideOffset={4}>
                         <SelectItem value="+33">🇫🇷 +33</SelectItem>
-                        <SelectItem value="+1">🇺🇸 +1</SelectItem>
-                        <SelectItem value="+44">🇬🇧 +44</SelectItem>
+                        <SelectItem value="+32">🇧🇪 +32</SelectItem>
+                        <SelectItem value="+41">🇨🇭 +41</SelectItem>
+                        <SelectSeparator />
+                        <SelectItem value="+43">🇦🇹 +43</SelectItem>
+                        <SelectItem value="+359">🇧🇬 +359</SelectItem>
+                        <SelectItem value="+385">🇭🇷 +385</SelectItem>
+                        <SelectItem value="+357">🇨🇾 +357</SelectItem>
+                        <SelectItem value="+420">🇨🇿 +420</SelectItem>
+                        <SelectItem value="+45">🇩🇰 +45</SelectItem>
+                        <SelectItem value="+372">🇪🇪 +372</SelectItem>
+                        <SelectItem value="+358">🇫🇮 +358</SelectItem>
+                        <SelectItem value="+49">🇩🇪 +49</SelectItem>
+                        <SelectItem value="+30">🇬🇷 +30</SelectItem>
+                        <SelectItem value="+36">🇭🇺 +36</SelectItem>
+                        <SelectItem value="+353">🇮🇪 +353</SelectItem>
+                        <SelectItem value="+39">🇮🇹 +39</SelectItem>
+                        <SelectItem value="+371">🇱🇻 +371</SelectItem>
+                        <SelectItem value="+370">🇱🇹 +370</SelectItem>
+                        <SelectItem value="+352">🇱🇺 +352</SelectItem>
+                        <SelectItem value="+356">🇲🇹 +356</SelectItem>
+                        <SelectItem value="+31">🇳🇱 +31</SelectItem>
+                        <SelectItem value="+48">🇵🇱 +48</SelectItem>
+                        <SelectItem value="+351">🇵🇹 +351</SelectItem>
+                        <SelectItem value="+40">🇷🇴 +40</SelectItem>
+                        <SelectItem value="+421">🇸🇰 +421</SelectItem>
+                        <SelectItem value="+386">🇸🇮 +386</SelectItem>
+                        <SelectItem value="+34">🇪🇸 +34</SelectItem>
+                        <SelectItem value="+46">🇸🇪 +46</SelectItem>
                       </SelectContent>
                     </Select>
                     <input type="hidden" {...register("phone_country_code")} value={phoneCode} readOnly />
@@ -298,7 +344,6 @@ export function RegisterForm({ className, ...props }) {
                     </div>
                     <Input
                       id="phone_number"
-                      placeholder={PHONE_RULES[phoneCode]?.example || "ex: numéro"}
                       {...register("phone_number")}
                       onChange={(e) => {
                         const digits = e.target.value.replace(/\D/g, "");
@@ -320,7 +365,7 @@ export function RegisterForm({ className, ...props }) {
               </div>
 
               {/* Password & Confirm Password - 50% 50% */}
-              <div className="grid gap-2">
+              <div className="grid">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <div className="flex items-center mb-2">
@@ -361,11 +406,11 @@ export function RegisterForm({ className, ...props }) {
 
       <div className="text-center text-xs text-muted-foreground [&_a]:underline [&_a]:underline-offset-4 ">
         En vous inscrivant, vous confirmez avoir lu et accepté nos{" "}
-        <a href="/terms-of-service" className="hover:text-primary">
+        <a href="/terms-of-service" target="_blank" rel="noopener noreferrer" className="hover:text-primary">
           Conditions Générales d&apos;Utilisation
         </a>{" "}
         ainsi que notre{" "}
-        <a href="/privacy-policy" className="hover:text-primary">
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-primary">
           Politique de Confidentialité
         </a>.
       </div>

@@ -53,6 +53,8 @@ import {
  * @param {() => void} [props.onToggleFollow] - Callback toggling follow status.
  * @param {boolean} props.followAnimating - Indicates the follow button animation state.
  * @param {number} props.followersCount - Number of followers displayed next to the CTA.
+ * @param {() => void} [props.onMessageClick] - Callback when message button is clicked.
+ * @param {boolean} [props.messageLoading] - Indicates if message action is loading.
  * @returns {JSX.Element} Hero header for the athlete profile page.
  */
 export default function AthleteProfileHeader({
@@ -72,6 +74,8 @@ export default function AthleteProfileHeader({
   onToggleFollow,
   followAnimating = false,
   followersCount = 0,
+  onMessageClick,
+  messageLoading = false,
 }) {
   return (
     <>
@@ -192,10 +196,12 @@ export default function AthleteProfileHeader({
         <span className="sm:ml-3">
           <button
             type="button"
-            className="inline-flex items-center rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 dark:shadow-none"
+            onClick={onMessageClick}
+            disabled={messageLoading}
+            className="inline-flex items-center rounded-md bg-pink-600 px-3 py-2 text-sm font-semibold text-white shadow-xs hover:bg-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-600 dark:shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Send aria-hidden="true" className="mr-1.5 -ml-0.5 size-5" />
-            Contact
+            {messageLoading ? 'Chargement...' : 'Message'}
           </button>
         </span>
 

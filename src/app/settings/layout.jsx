@@ -4,14 +4,8 @@
  * Shared header and two-column layout (sidebar nav + content) for settings pages.
  */
 
-import { useEffect, useRef } from "react";
-import {
-  AppWindow,
-  Bell,
-  CreditCard,
-  LayoutDashboard,
-  User,
-} from "lucide-react";
+import { useEffect, useMemo, useRef } from "react";
+import { CreditCard, LayoutDashboard, Users, User } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { SidebarNav } from "@/components/sidebar-nav";
 import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
@@ -19,14 +13,6 @@ import AppHeader from "@/components/app-header";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { useRouter, usePathname } from "next/navigation";
 import { toast } from "sonner";
-
-const sidebarNavItems = [
-  { title: "Vue d'ensemble", href: "/settings", icon: <User className="w-4 h-4" /> },
-  { title: "Notifications", href: "/settings/notifications", icon: <Bell className="w-4 h-4" /> },
-  { title: "Apparence", href: "/settings/appearance", icon: <AppWindow className="w-4 h-4" /> },
-  { title: "Facturation", href: "/settings/billing", icon: <CreditCard className="w-4 h-4" /> },
-  { title: "Affichage", href: "/settings/display", icon: <LayoutDashboard className="w-4 h-4" /> },
-];
 
 const SettingsLayout = ({ children }) => {
   const { user, loading } = useCurrentUser();
@@ -46,6 +32,20 @@ const SettingsLayout = ({ children }) => {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     }
   }, [user, loading, router, pathname]);
+  const sidebarNavItems = useMemo(() => {
+    const items = [
+      { title: "Vue d'ensemble", href: "/settings", icon: <LayoutDashboard className="h-4 w-4" /> },
+      { title: "Profil", href: "/settings/user", icon: <User className="h-4 w-4" /> },
+      { title: "Facturation", href: "/settings/billing", icon: <CreditCard className="h-4 w-4" /> },
+    ];
+
+    if (user?.account_type === "COLLABORATOR") {
+      items.push({ title: "Organisation", href: "/settings/organisation", icon: <Users className="h-4 w-4" /> });
+    }
+
+    return items;
+  }, [user?.account_type]);
+
   return (
     <SidebarProvider>
       <SidebarInset>

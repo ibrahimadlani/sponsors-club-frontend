@@ -1,24 +1,12 @@
 "use client";
 
-// Followed feed page: shows a unified feed of updates
-// from all athletes the user follows (social posts, competitions,
-// follower growth, trophies, photos, etc.).
+// Followed page: shows a list of all athletes the user follows
+// with options to view their profile or send them a message.
 
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  Trophy,
-  Medal,
-  Instagram,
-  Facebook,
-  Youtube,
-  Users,
-  TrendingUp,
-  Calendar,
-  MapPin,
-  ImageIcon as ImageIc,
-  Camera,
   Heart,
   MessageSquare,
   Search,
@@ -26,181 +14,128 @@ import {
   User,
 } from "lucide-react";
 
-import ResponsiveImage from "@/components/responsive-image";
+import AthleteCard from "@/components/athlete-card";
+import AthleteCardSkeleton from "@/components/athlete-card-skeleton";
 import { SidebarInset } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-
-const sampleFeed = [
-  {
-    id: "p1",
-    type: "post",
-    athlete: { name: "Kylian Mbappé", avatar: "/images/mbappe-1.jpg" },
-    platform: "instagram",
-    text: "Séance d'entraînement avant le match de samedi. On y va à fond !",
-    images: ["/images/mbappe-2.jpg", "/images/mbappe-3.jpg"],
-    time: "il y a 2 h",
-  },
-  {
-    id: "c1",
-    type: "competition",
-    athlete: { name: "Clarisse Agbegnenou", avatar: "/images/clarisse-1.jpg" },
-    title: "Grand Slam de Paris",
-    location: "Accor Arena, Paris",
-    date: "12 Mars 2025",
-    result: "Qualification en finale",
-    time: "hier",
-  },
-  {
-    id: "f1",
-    type: "followers",
-    athlete: { name: "Victor Wembanyama", avatar: "/images/wemby-1.jpg" },
-    delta: +15200,
-    platform: "instagram",
-    note: "Suite au dernier match",
-    time: "il y a 3 j",
-  },
-  {
-    id: "t1",
-    type: "trophy",
-    athlete: { name: "Teddy Riner", avatar: "/images/teddy-1.jpg" },
-    title: "Championnats d'Europe",
-    award: "Médaille d'or",
-    time: "il y a 1 sem",
-  },
-  {
-    id: "ph1",
-    type: "photo",
-    athlete: { name: "Caroline Garcia", avatar: "/images/garcia-1.jpg" },
-    caption: "Séance photo avant le départ.",
-    images: [
-      "/images/garcia-2.jpg",
-      "/images/garcia-3.jpg",
-      "/images/garcia-1.jpg",
-    ],
-    time: "il y a 2 sem",
-  },
-  {
-    id: "yt1",
-    type: "post",
-    athlete: { name: "Tony Yoka", avatar: "/images/yoka-1.jpg" },
-    platform: "youtube",
-    text: "Nouvelle vidéo : retour sur mon dernier combat.",
-    images: ["/images/yoka-2.jpg"],
-    time: "il y a 1 mois",
-  },
-];
-
-const FILTERS = [
-  { key: "all", label: "Tout" },
-  { key: "post", label: "Posts" },
-  { key: "competition", label: "Compétitions" },
-  { key: "followers", label: "Croissance" },
-  { key: "trophy", label: "Trophées" },
-  { key: "photo", label: "Photos" },
-];
+import { getMyFollows } from "@/lib/api/users";
+import { messaging } from "@/lib/api";
+import { toast } from "sonner";
 
 export default function FollowedFeedPage() {
   const { user } = useCurrentUser();
-  const [filter, setFilter] = useState("all");
+  const router = useRouter();
   const [athletes, setAthletes] = useState([]);
   const [loadingAthletes, setLoadingAthletes] = useState(true);
+  const [messageLoadingId, setMessageLoadingId] = useState(null);
   const pathname = usePathname();
   const isExplorer = pathname === "/" || ["/explorer", "/athletes", "/teams", "/organisations"].some((p) => pathname.startsWith(p));
 
-  const events = useMemo(() => {
-    if (filter === "all") return sampleFeed;
-    return sampleFeed.filter((e) => e.type === filter);
-  }, [filter]);
-
   // Load followed athletes
   useEffect(() => {
+    const fetchFollowedAthletes = async () => {
+      try {
+        setLoadingAthletes(true);
+        const response = await getMyFollows();
+        // Extract athletes from the follow objects
+        const athletesData = response?.map(follow => follow.athlete) || [];
+        setAthletes(athletesData);
+      } catch (error) {
+        console.error("Error fetching followed athletes:", error);
+        toast.error("Erreur lors du chargement des athlètes suivis");
+      } finally {
+        setLoadingAthletes(false);
+      }
+    };
 
-  }, []);
+    if (user) {
+      fetchFollowedAthletes();
+    } else {
+      setLoadingAthletes(false);
+    }
+  }, [user]);
+
+  const handleMessageClick = async (athlete) => {
+    const agentId = athlete.agent?.id || athlete.agent_id || athlete.created_by;
+    
+    if (!agentId) {
+      toast.error("Impossible de contacter cet athlète");
+      return;
+    }
+
+    try {
+      setMessageLoadingId(athlete.id);
+
+      // Get all threads
+      const threads = await messaging.getThreads();
+
+      // Check if thread already exists with this agent
+      const existingThread = threads.find(
+        (thread) => thread.agent?.id === agentId
+      );
+
+      if (existingThread) {
+        // Redirect to existing thread
+        router.push(`/messages?thread=${existingThread.id}`);
+      } else {
+        // Create new thread
+        const newThread = await messaging.createThread({
+          agent_id: agentId,
+          athlete_id: athlete.id,
+        });
+
+        // Redirect to new thread
+        router.push(`/messages?thread=${newThread.id}`);
+      }
+    } catch (error) {
+      console.error("Error handling message:", error);
+      toast.error("Erreur lors de l'ouverture de la conversation");
+    } finally {
+      setMessageLoadingId(null);
+    }
+  };
 
   return (
     <SidebarInset className="min-h-screen flex flex-col">
       <div className="max-w-6xl mx-auto px-4 py-6 w-full">
-          {/* Followed athletes grid */}
+          {/* Followed athletes list */}
           <section className="mb-8">
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-lg font-semibold">Athlètes suivis</h2>
               {!loadingAthletes && (
-                <span className="text-sm text-muted-foreground">{athletes.length}</span>
+                <span className="text-sm text-muted-foreground">{athletes.length} athlète{athletes.length > 1 ? 's' : ''}</span>
               )}
             </div>
             {loadingAthletes ? (
-              <div className="text-sm text-muted-foreground">Chargement…</div>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <AthleteCardSkeleton key={i} />
+                ))}
+              </div>
             ) : athletes.length === 0 ? (
-              <div className="text-sm text-muted-foreground">Vous ne suivez encore aucun athlète.</div>
+              <div className="bg-white dark:bg-zinc-900 rounded-xl p-10 text-center text-muted-foreground">
+                <Heart className="w-10 h-10 opacity-70 mx-auto mb-2" />
+                <p>Vous ne suivez encore aucun athlète.</p>
+                <Link href="/athletes">
+                  <Button variant="outline" className="mt-4">
+                    Explorer les athlètes
+                  </Button>
+                </Link>
+              </div>
             ) : (
-              <div className="-mx-2 overflow-x-auto pb-2">
-                <ul className="flex gap-4 px-2 snap-x snap-mandatory">
-                  {athletes.map((a) => {
-                    const images = Array.isArray(a.images) && a.images.length ? a.images : [a.image1, a.image2, a.image3].filter(Boolean);
-                    return (
-                      <li key={a.id} className="snap-start shrink-0 w-[220px]">
-                        <Link href={a.profile_url || `#/athletes/${a.id}`}
-                          className="relative flex flex-col items-center rounded-lg border border-gray-300 bg-white px-4 py-5 shadow-xs focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-pink-600 hover:border-gray-400 dark:border-white/10 dark:bg-gray-800/50 dark:shadow-none dark:focus-within:outline-pink-500 dark:hover:border-white/25">
-                          <span aria-hidden="true" className="absolute inset-0" />
-                          <div className="relative">
-                            {images?.[0] ? (
-                              <ResponsiveImage
-                                alt={`${a.name} avatar`}
-                                src={images[0]}
-                                fill
-                                className="size-20"
-                                imageClassName="rounded-full bg-gray-300 outline -outline-offset-1 outline-black/5 dark:bg-gray-700 dark:outline-white/10"
-                                sizes="80px"
-                              />
-                            ) : (
-                              <div className="size-20 rounded-full bg-muted" />
-                            )}
-                            {a.recent_activity_count > 0 && (
-                              <span className="absolute -top-1 -right-1 min-w-5 h-5 px-1.5 rounded-full bg-pink-600 text-white text-[10px] font-semibold flex items-center justify-center shadow">
-                                {a.recent_activity_count}
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-3 text-sm font-semibold text-gray-900 dark:text-white text-center line-clamp-1">{a.name}</p>
-                          <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 text-center line-clamp-1">{a.category}</p>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
+              <div className="space-y-3">
+                {athletes.map((athlete) => (
+                  <AthleteCard
+                    key={athlete.id}
+                    athlete={athlete}
+                    onMessageClick={handleMessageClick}
+                    messageLoading={messageLoadingId === athlete.id}
+                  />
+                ))}
               </div>
             )}
           </section>
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold">Actualités des athlètes suivis</h1>
-          </div>
-
-          {/* Filters */}
-          <div className="flex flex-wrap gap-2 mb-6">
-            {FILTERS.map((f) => (
-              <Button
-                key={f.key}
-                variant={filter === f.key ? "default" : "ghost"}
-                className={filter === f.key ? "bg-pink-600 hover:bg-pink-700" : ""}
-                onClick={() => setFilter(f.key)}
-              >
-                {f.label}
-              </Button>
-            ))}
-          </div>
-
-          {/* Feed list */}
-          <div className="space-y-4">
-            {events.length === 0 ? (
-              <div className="bg-white dark:bg-zinc-900 rounded-xl p-10 text-center text-muted-foreground">
-                <MessageSquare className="w-10 h-10 opacity-70 mx-auto mb-2" />
-                <p>Aucune actualité pour ce filtre.</p>
-              </div>
-            ) : (
-              events.map((item) => <FeedCard key={item.id} item={item} />)
-            )}
-          </div>
         </div>
 
         {/* Mobile sticky navigation/footer */}
@@ -250,162 +185,5 @@ export default function FollowedFeedPage() {
         )}
       </footer>
     </SidebarInset>
-  );
-}
-
-function FeedCard({ item }) {
-  return (
-    <article className="bg-white dark:bg-zinc-900 rounded-xl p-4 shadow border border-transparent">
-      <header className="flex items-start gap-3 mb-3">
-        <ResponsiveImage
-          src={item.athlete.avatar}
-          alt={item.athlete.name}
-          fill
-          className="size-10"
-          imageClassName="rounded-full object-cover"
-          sizes="40px"
-        />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-semibold truncate">{item.athlete.name}</h3>
-            <TypeBadge type={item.type} platform={item.platform} />
-          </div>
-          <div className="text-xs text-muted-foreground">{item.time}</div>
-        </div>
-      </header>
-
-      {/* Body */}
-      {item.type === "post" && <PostBody item={item} />}
-      {item.type === "competition" && <CompetitionBody item={item} />}
-      {item.type === "followers" && <FollowersBody item={item} />}
-      {item.type === "trophy" && <TrophyBody item={item} />}
-      {item.type === "photo" && <PhotoBody item={item} />}
-    </article>
-  );
-}
-
-function TypeBadge({ type, platform }) {
-  const base = "text-[10px] px-1.5 py-0.5 rounded-full font-semibold flex items-center gap-1";
-  if (type === "post") {
-    const Icon = platform === "instagram" ? Instagram : platform === "facebook" ? Facebook : Youtube;
-    const color = platform === "instagram" ? "text-pink-600" : platform === "facebook" ? "text-blue-600" : "text-red-600";
-    return (
-      <span className={`${base} bg-muted/40`}>
-        <Icon className={`w-3 h-3 ${color}`} /> Post
-      </span>
-    );
-  }
-  if (type === "competition") {
-    return (
-      <span className={`${base} bg-muted/40`}>
-        <Calendar className="w-3 h-3" /> Compétition
-      </span>
-    );
-  }
-  if (type === "followers") {
-    return (
-      <span className={`${base} bg-muted/40`}>
-        <TrendingUp className="w-3 h-3 text-emerald-600" /> Croissance
-      </span>
-    );
-  }
-  if (type === "trophy") {
-    return (
-      <span className={`${base} bg-muted/40`}>
-        <Trophy className="w-3 h-3 text-amber-600" /> Trophée
-      </span>
-    );
-  }
-  if (type === "photo") {
-    return (
-      <span className={`${base} bg-muted/40`}>
-        <Camera className="w-3 h-3" /> Photo
-      </span>
-    );
-  }
-  return null;
-}
-
-function PostBody({ item }) {
-  return (
-    <div className="ml-13">
-      {item.text && <p className="text-sm mb-3">{item.text}</p>}
-      {item.images?.length ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {item.images.map((src, i) => (
-            <ResponsiveImage
-              key={i}
-              src={src}
-              alt="post"
-              fill
-              className="h-32 w-full"
-              imageClassName="object-cover rounded-lg"
-              sizes="(min-width: 768px) 33vw, 100vw"
-            />
-          ))}
-        </div>
-      ) : null}
-      <div className="flex items-center gap-3 mt-3 text-sm text-muted-foreground">
-        <button className="flex items-center gap-1 hover:text-foreground"><Heart className="w-4 h-4" /> J&apos;aime</button>
-        <button className="flex items-center gap-1 hover:text-foreground"><MessageSquare className="w-4 h-4" /> Commenter</button>
-      </div>
-    </div>
-  );
-}
-
-function CompetitionBody({ item }) {
-  return (
-    <div className="ml-13 text-sm">
-      <div className="flex items-center gap-2"><Medal className="w-4 h-4" /> {item.title}</div>
-      <div className="flex items-center gap-2 mt-1 text-muted-foreground"><MapPin className="w-4 h-4" /> {item.location}</div>
-      <div className="mt-1 text-muted-foreground"><Calendar className="inline w-4 h-4 mr-1" /> {item.date}</div>
-      {item.result && <div className="mt-2 font-medium">{item.result}</div>}
-    </div>
-  );
-}
-
-function FollowersBody({ item }) {
-  const positive = (item.delta || 0) >= 0;
-  return (
-    <div className="ml-13 text-sm">
-      <div className="flex items-center gap-2">
-        <Users className="w-4 h-4" />
-        Variation followers {item.platform}: {positive ? "+" : ""}{item.delta?.toLocaleString("fr-FR")}
-      </div>
-      {item.note && <div className="mt-1 text-muted-foreground">{item.note}</div>}
-      <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden max-w-xs">
-        <div className={`h-full ${positive ? "bg-emerald-500" : "bg-rose-500"}`} style={{ width: `${Math.min(Math.abs(item.delta) / 300, 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-function TrophyBody({ item }) {
-  return (
-    <div className="ml-13 text-sm">
-      <div className="flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-600" /> {item.award}</div>
-      <div className="text-muted-foreground mt-1">{item.title}</div>
-    </div>
-  );
-}
-
-function PhotoBody({ item }) {
-  return (
-    <div className="ml-13 text-sm">
-      {item.caption && <p className="mb-3">{item.caption}</p>}
-      <div className="grid grid-cols-3 gap-2">
-        {item.images?.map((src, i) => (
-          <ResponsiveImage
-            key={i}
-            src={src}
-            alt="photo"
-            fill
-            className="h-28 w-full"
-            imageClassName="object-cover rounded-lg"
-            sizes="(min-width: 768px) 33vw, 100vw"
-          />
-        ))}
-      </div>
-    </div>
   );
 }

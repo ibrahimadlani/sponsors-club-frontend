@@ -91,6 +91,14 @@ export async function getClauseTemplates() {
   return get("/clause-templates/");
 }
 
+/**
+ * Get available agents for contracts
+ * This endpoint should be accessible to collaborators
+ */
+export async function getAvailableAgents() {
+  return get("/contracts/available-agents/");
+}
+
 // Versions
 /**
  * Get contract versions

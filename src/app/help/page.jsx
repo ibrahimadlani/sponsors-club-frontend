@@ -102,7 +102,7 @@ export default function HelpCenterPage() {
         <AppHeader />
         <main className="flex-1">
           <section className="border-b border-border bg-muted/40">
-            <div className="mx-auto max-w-5xl px-6 py-16 md:py-20">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:py-20">
               <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
                 <div className="space-y-4">
                   <Badge variant="outline" className="w-fit border-border text-foreground">
@@ -136,7 +136,7 @@ export default function HelpCenterPage() {
             </div>
           </section>
 
-          <section className="mx-auto max-w-5xl px-6 py-16">
+          <section className="mx-auto max-w-7xl px-6 py-16">
             <div className="grid gap-6 md:grid-cols-3">
               {quickLinks.map(({ title, description, href, icon: Icon }) => (
                 <Card key={href} className="overflow-hidden border-border/80 bg-card/90">
@@ -161,7 +161,7 @@ export default function HelpCenterPage() {
           </section>
 
           <section className="border-y border-border bg-muted/40">
-            <div className="mx-auto max-w-5xl px-6 py-16 space-y-12 md:space-y-14">
+            <div className="mx-auto max-w-7xl px-6 py-16 space-y-12 md:space-y-14">
               <div className="space-y-3">
                 <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
                   Collections de ressources
@@ -193,7 +193,7 @@ export default function HelpCenterPage() {
             </div>
           </section>
 
-          <section className="mx-auto max-w-5xl px-6 py-16">
+          <section className="mx-auto max-w-7xl px-6 py-16">
             <div className="space-y-3">
               <h2 className="text-2xl font-semibold tracking-tight md:text-3xl">
                 Vous n&apos;avez pas trouvé votre réponse ?
@@ -221,7 +221,7 @@ export default function HelpCenterPage() {
           </section>
 
           <section className="border-t border-border bg-muted/50">
-            <div className="mx-auto max-w-5xl px-6 py-16">
+            <div className="mx-auto max-w-7xl px-6 py-16">
               <Card className="overflow-hidden border-border/80 bg-card/90">
                 <CardHeader className="space-y-3 border-b border-border/60 bg-muted/40 px-6 py-5">
                   <CardTitle className="text-lg">Communautés SponsorsClub</CardTitle>

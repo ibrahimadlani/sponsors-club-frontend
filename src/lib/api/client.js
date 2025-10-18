@@ -8,17 +8,47 @@
 import { API_BASE_URL } from "../api";
 
 /**
+ * Get CSRF token from cookies
+ */
+function getCsrfToken() {
+  if (typeof document === 'undefined') return null;
+  
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
+/**
  * Base fetch wrapper with authentication and error handling
  */
 export async function apiRequest(endpoint, options = {}) {
   const url = `${API_BASE_URL}${endpoint}`;
   
+  // Get CSRF token for unsafe methods
+  const csrfToken = getCsrfToken();
+  const headers = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  };
+  
+  // Add CSRF token for POST, PUT, PATCH, DELETE
+  if (csrfToken && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(options.method?.toUpperCase())) {
+    headers['X-CSRFToken'] = csrfToken;
+  }
+  
   const config = {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
+    headers,
     credentials: "include", // Include cookies for authentication
   };
 

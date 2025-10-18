@@ -62,7 +62,7 @@ export default function ContactPage() {
         <AppHeader />
         <main className="flex-1">
           <section className="border-b border-border bg-muted/40">
-            <div className="mx-auto max-w-4xl px-6 py-16 md:py-20">
+            <div className="mx-auto max-w-7xl px-6 py-16 md:py-20">
               <motion.div
                 className="space-y-6 text-center"
                 initial={{ opacity: 0, y: 24 }}
@@ -84,7 +84,7 @@ export default function ContactPage() {
             </div>
           </section>
 
-          <section className="mx-auto max-w-5xl px-6 py-16 md:py-20">
+          <section className="mx-auto max-w-7xl px-6 py-16 md:py-20">
             <div className="grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
               <motion.div
                 className="space-y-6"
@@ -192,7 +192,7 @@ export default function ContactPage() {
           </section>
 
           <section className="border-t border-border bg-muted/50">
-            <div className="mx-auto max-w-5xl px-6 py-16">
+            <div className="mx-auto max-w-7xl px-6 py-16">
               <motion.div
                 className="flex flex-col gap-6 rounded-2xl border border-border bg-card/80 p-8 md:flex-row md:items-center md:justify-between"
                 initial={{ opacity: 0, y: 20 }}

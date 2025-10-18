@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import { useRouter } from "next/navigation"; // Next.js router for redirection
+import { useUnreadMessages } from "@/contexts/UnreadMessagesContext";
 import { useTheme } from "next-themes"; // Hook to manage theme (light/dark)
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -176,6 +177,47 @@ export function NavUser({ user: userProp = null }) {
    * Affiche les mêmes items que dans la NavBar
    * Pour les agents, adapte automatiquement le lien "Mes Athlètes" si un seul athlète
    */
+  const MessagesLink = () => {
+    const { unreadCount, setUnreadCount } = useUnreadMessages();
+    
+    // Fetch unread count on mount and periodically
+    useEffect(() => {
+      if (!isAuthenticated) return;
+      
+      const fetchUnreadCount = async () => {
+        try {
+          const { messaging } = await import("@/lib/api");
+          const response = await messaging.getThreads();
+          const total = response.unread_messages_total || 0;
+          setUnreadCount(total);
+        } catch (error) {
+          console.error("Failed to fetch unread count:", error);
+        }
+      };
+      
+      // Fetch immediately
+      fetchUnreadCount();
+      
+      // Fetch every 30 seconds
+      const interval = setInterval(fetchUnreadCount, 30000);
+      
+      return () => clearInterval(interval);
+    }, [setUnreadCount, isAuthenticated]);
+    
+    return (
+      <Link href="/messages" passHref legacyBehavior>
+        <a className="relative rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10 w-10 hidden lg:flex justify-center items-center cursor-pointer">
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-[11px] font-bold z-10 shadow">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
+          <Mail className="h-4 w-4" />
+        </a>
+      </Link>
+    );
+  };
+
   const RoleMenu = () => {
     // Utilise la navigation adaptée pour les agents (gère le cas d'un seul athlète)
     const items = userRole === "AGENT" ? agentNavItems : getNavByRole(userRole);
@@ -204,12 +246,7 @@ export function NavUser({ user: userProp = null }) {
           <Bell className="h-4 w-4" />
         </a>
       </Link>
-      <Link href="/messages" passHref legacyBehavior>
-        <a className="relative rounded-full hover:bg-muted/70 dark:hover:bg-muted/90 transition-colors h-10 w-10 hidden lg:flex justify-center items-center cursor-pointer">
-          <span className="absolute -top-1 -right-1 flex items-center justify-center h-5 w-5 rounded-full bg-pink-500 text-white text-[11px] font-bold z-10 shadow">3</span>
-          <Mail className="h-4 w-4" />
-        </a>
-      </Link>
+      <MessagesLink />
 
       <div className="relative">
         <DropdownMenu>
